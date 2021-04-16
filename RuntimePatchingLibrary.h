@@ -24,12 +24,12 @@
 //
 //RUNTIMEPATCHINGLIBRARY_API int fnRuntimePatchingLibrary(void);
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_initialize();
+RUNTIMEPATCHINGLIBRARY_API void RPL_initialize();
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_deinitialize();
+RUNTIMEPATCHINGLIBRARY_API void RPL_deinitialize();
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_executeSnippet(std::string code);
+RUNTIMEPATCHINGLIBRARY_API void RPL_executeSnippet(std::string code);
 
-RUNTIMEPATCHINGLIBRARY_API int getCurrentStackSize();
+RUNTIMEPATCHINGLIBRARY_API int RPL_getCurrentStackSize();
 
-RUNTIMEPATCHINGLIBRARY_API lua_State* getLuaState();
+RUNTIMEPATCHINGLIBRARY_API lua_State* RPL_getLuaState();

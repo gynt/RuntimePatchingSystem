@@ -20,22 +20,22 @@
 //    return;
 //}
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_initialize() {
+RUNTIMEPATCHINGLIBRARY_API void RPL_initialize() {
 	return LuaAPI::initialize();
 }
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_deinitialize() {
+RUNTIMEPATCHINGLIBRARY_API void RPL_deinitialize() {
 	return LuaAPI::deinitialize();
 }
 
-RUNTIMEPATCHINGLIBRARY_API void RLP_executeSnippet(std::string code) {
+RUNTIMEPATCHINGLIBRARY_API void RPL_executeSnippet(std::string code) {
 	return LuaAPI::executeSnippet(code);
 }
 
-RUNTIMEPATCHINGLIBRARY_API int getCurrentStackSize() {
+RUNTIMEPATCHINGLIBRARY_API int RPL_getCurrentStackSize() {
 	return LuaAPI::getCurrentStackSize();
 }
 
-RUNTIMEPATCHINGLIBRARY_API lua_State* getLuaState() {
+RUNTIMEPATCHINGLIBRARY_API lua_State* RPL_getLuaState() {
 	return LuaAPI::getLuaState();
 }
