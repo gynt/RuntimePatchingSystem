@@ -20,8 +20,8 @@
 //    return;
 //}
 
-RUNTIMEPATCHINGLIBRARY_API void RPL_initialize() {
-	return LuaAPI::initialize();
+RUNTIMEPATCHINGLIBRARY_API void RPL_initialize(std::string bootstrapFilePath, std::string packagePath) {
+	return LuaAPI::initialize(bootstrapFilePath, packagePath);
 }
 
 RUNTIMEPATCHINGLIBRARY_API void RPL_deinitialize() {

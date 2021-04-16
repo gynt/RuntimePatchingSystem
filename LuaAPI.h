@@ -6,7 +6,7 @@
 
 namespace LuaAPI {
 
-	void initialize();
+	void initialize(std::string bootstrapFilePath, std::string packagePath);
 	void deinitialize();
 	void executeSnippet(std::string code);
 	int getCurrentStackSize();

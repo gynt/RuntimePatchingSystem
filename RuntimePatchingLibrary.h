@@ -24,7 +24,7 @@
 //
 //RUNTIMEPATCHINGLIBRARY_API int fnRuntimePatchingLibrary(void);
 
-RUNTIMEPATCHINGLIBRARY_API void RPL_initialize();
+RUNTIMEPATCHINGLIBRARY_API void RPL_initialize(std::string bootstrapFilePath, std::string packagePath);
 
 RUNTIMEPATCHINGLIBRARY_API void RPL_deinitialize();
 

@@ -920,29 +920,15 @@ namespace LuaAPI {
 		return 1;
 	}
 
-	std::string luaEntryPointFile;
-
-	void setEntryPoint(std::string filePath) {
-		luaEntryPointFile = filePath;
-	}
-
-	std::string luaPackagePath;
-
-	void setPackagePath(std::string packagePath) {
-		luaPackagePath = packagePath;
-	}
-
-	void initialize() {
+	void initialize(std::string bootstrapFilePath, std::string packagePath) {
 		heap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
-
-		luaEntryPointFile;
 
 		L = luaL_newstate();
 		luaL_openlibs(L);
 
 		lua_getglobal(L, "package");
 		lua_pushstring(L, "path");
-		lua_pushstring(L, luaPackagePath.c_str());
+		lua_pushstring(L, packagePath.c_str());
 		lua_settable(L, -3);
 		lua_pop(L, 1);
 
@@ -975,7 +961,7 @@ namespace LuaAPI {
 
 		lua_register(L, "scanForAOB", luaScanForAOB);
 
-		int r = luaL_dofile(L, luaEntryPointFile.c_str());
+		int r = luaL_dofile(L, bootstrapFilePath.c_str());
 
 		if (r == LUA_OK) {
 			std::cout << "[LUA]: loaded LUA API." << std::endl;
