@@ -920,21 +920,10 @@ namespace LuaAPI {
 		return 1;
 	}
 
-	void initialize(std::string bootstrapFilePath, std::string packagePath) {
-		heap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
-
-		L = luaL_newstate();
-		luaL_openlibs(L);
-
-		lua_getglobal(L, "package");
-		lua_pushstring(L, "path");
-		lua_pushstring(L, packagePath.c_str());
-		lua_settable(L, -3);
-		lua_pop(L, 1);
-
-		lua_getglobal(L, "_G");
-		luaL_setfuncs(L, printlib, 0);
-		lua_pop(L, 1);
+	void initializeLuaAPI(lua_State* L, bool includePrintRedirect) {
+		if (heap == 0) {
+			heap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
+		}
 
 		lua_register(L, "hookCode", luaHookCode);
 		lua_register(L, "callOriginal", cppCallCode);
@@ -961,16 +950,52 @@ namespace LuaAPI {
 
 		lua_register(L, "scanForAOB", luaScanForAOB);
 
+		if (includePrintRedirect) {
+			lua_getglobal(L, "_G");
+			luaL_setfuncs(L, printlib, 0);
+			lua_pop(L, 1);
+		}
+	}
+
+	void setupPackagePath(lua_State *L, std::string packagePath) {
+		lua_getglobal(L, "package");
+		lua_pushstring(L, "path");
+		lua_pushstring(L, packagePath.c_str());
+		lua_settable(L, -3);
+		lua_pop(L, 1);
+	}
+
+	void runBootstrapFile(lua_State* L, std::string bootstrapFilePath) {
+		int stackSize = lua_gettop(L);
+
 		int r = luaL_dofile(L, bootstrapFilePath.c_str());
 
 		if (r == LUA_OK) {
 			std::cout << "[LUA]: loaded LUA API." << std::endl;
+
+			lua_pop(L, lua_gettop(L) - stackSize);
 		}
 		else {
 			std::string errormsg = lua_tostring(L, -1);
 			std::cout << "[LUA]: failed to load LUA API: " << errormsg << std::endl;
 			lua_pop(L, 1); // pop off the error message;
 		}
+	}
+
+	void initializeLua() {
+		L = luaL_newstate();
+	}
+
+	void initialize(std::string bootstrapFilePath, std::string packagePath) {
+		initializeLua();
+
+		luaL_openlibs(L);
+
+		setupPackagePath(L, packagePath);
+
+		initializeLuaAPI(L, true);
+
+		runBootstrapFile(L, bootstrapFilePath);
 	}
 
 	void deinitialize() {
