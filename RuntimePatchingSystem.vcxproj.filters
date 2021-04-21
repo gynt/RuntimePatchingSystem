@@ -25,7 +25,7 @@
     <ClInclude Include="framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RuntimePatchingLibrary.h">
+    <ClInclude Include="RuntimePatchingSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LuaAPI.h">
@@ -36,7 +36,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RuntimePatchingLibrary.cpp">
+    <ClCompile Include="RuntimePatchingSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.cpp">

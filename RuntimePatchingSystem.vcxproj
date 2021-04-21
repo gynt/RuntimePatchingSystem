@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{E11CF7CD-16BD-48B9-83AF-00982F506087}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>RuntimePatchingLibrary</RootNamespace>
+    <RootNamespace>RuntimePatchingSystem</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,19 +71,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>RPL</TargetName>
+    <TargetName>RPS</TargetName>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>RPL</TargetName>
+    <TargetName>RPS</TargetName>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>RPL</TargetName>
+    <TargetName>RPS</TargetName>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>RPL</TargetName>
+    <TargetName>RPS</TargetName>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -169,13 +169,13 @@
     <ClInclude Include="AOB.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LuaAPI.h" />
-    <ClInclude Include="RuntimePatchingLibrary.h" />
+    <ClInclude Include="RuntimePatchingSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AOB.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="LuaAPI.cpp" />
-    <ClCompile Include="RuntimePatchingLibrary.cpp" />
+    <ClCompile Include="RuntimePatchingSystem.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

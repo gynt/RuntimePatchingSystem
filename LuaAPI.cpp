@@ -137,7 +137,7 @@ namespace LuaAPI {
 	int luaCallingConvention;
 	DWORD currentECXValue;
 
-	// lua calls this function as: hookCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0)
+	// lua calls this function as: exposeCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0)
 	int luaExposeCode(lua_State* L) {
 		if (lua_gettop(L) != 4) {
 			return luaL_error(L, "expecting exactly 4 arguments");

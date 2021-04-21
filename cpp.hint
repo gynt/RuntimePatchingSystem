@@ -1,2 +1,2 @@
-#define RUNTIMEPATCHINGLIBRARY_API __declspec(dllexport)
-#define RUNTIMEPATCHINGLIBRARY_API __declspec(dllimport)
+#define RUNTIMEPATCHINGSYSTEM_API __declspec(dllexport)
+#define RUNTIMEPATCHINGSYSTEM_API __declspec(dllimport)
