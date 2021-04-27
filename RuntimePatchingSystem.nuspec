@@ -8,6 +8,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">AGPL-3.0-or-later</license>
     <projectUrl>https://github.com/gynt/RuntimePatchingSystem/</projectUrl>
+    <repository type="git" url="https://github.com/gynt/RuntimePatchingSystem.git"/>
     <!--<iconUrl>http://icon_url_here_or_delete_this_line/</iconUrl>-->
     <description>Runtime patching system that enables modifying program memory from lua scripts.</description>
     <!--<releaseNotes>Summary of changes made in this release of the package.</releaseNotes>-->
