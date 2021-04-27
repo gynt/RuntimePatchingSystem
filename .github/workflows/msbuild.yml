@@ -36,9 +36,11 @@ jobs:
     runs-on: windows-latest
     needs: build
     steps:
+    - name: List contents
+      run: ls
     - name: Create nuget package
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget pack RuntimePatchingSystem\RuntimePatchingSystem.nuspec
+      run: nuget pack RuntimePatchingSystem.nuspec
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.2.3
