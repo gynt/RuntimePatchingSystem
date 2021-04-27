@@ -149,6 +149,10 @@ namespace LuaAPI {
 		int callingConvention = lua_tointeger(L, 4);
 		//DWORD thisValue = lua_tointeger(L, 5);
 
+		if (argumentCount > 8) {
+			return luaL_error(L, "too many arguments specified, max is 8: " + argumentCount);
+		}
+
 		hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, 0, callingConvention, argumentCount, "", luaOriginal)));
 		hookMapping[address]->newOriginalFunctionLocation = address;
 		hookMapping[address]->registerOriginalFunctionInLua();
@@ -170,6 +174,10 @@ namespace LuaAPI {
 		int callingConvention = lua_tointeger(L, 5);
 		//DWORD thisValue = lua_tointeger(L, 6);
 		int hookSize = lua_tointeger(L, 6);
+
+		if (argumentCount > 8) {
+			return luaL_error(L, "too many arguments specified, max is 8: " + argumentCount);
+		}
 
 		hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
 
@@ -578,6 +586,22 @@ namespace LuaAPI {
 		}
 	}
 
+#ifdef _DEBUG
+
+	bool canWrite(DWORD address, int length) {
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		MEMORY_BASIC_INFORMATION mi;
+		SIZE_T vq = VirtualQuery((void*)address, &mi, sizeof(mi));
+		if (vq == ERROR_INVALID_PARAMETER || vq == 0) {
+			std::cout << "ERROR CODE: " << GetLastError() << std::endl;
+			return false;
+		}
+		
+		return mi.Protect & (PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE | PAGE_WRITECOPY | PAGE_READWRITE);
+	}
+#endif
+
 	static int l_my_print(lua_State* L) {
 		int nargs = lua_gettop(L);
 		std::cout << "[LUA]: ";
@@ -686,6 +710,13 @@ namespace LuaAPI {
 		}
 		DWORD address = lua_tointeger(L, 1);
 		BYTE value = lua_tointeger(L, 2);
+
+#ifdef _DEBUG
+		if (!canWrite(address, 1)) {
+			return luaL_error(L, ("cannot write " + std::to_string(1) + " bytes to location: " + std::to_string(address)).c_str());
+		}
+#endif
+
 		*((BYTE*)address) = value;
 		return 0;
 	}
@@ -696,6 +727,13 @@ namespace LuaAPI {
 		}
 		DWORD address = lua_tointeger(L, 1);
 		SHORT value = lua_tointeger(L, 2);
+
+#ifdef _DEBUG
+		if (!canWrite(address, 2)) {
+			return luaL_error(L, ("cannot write " + std::to_string(2) + " bytes to location: " + std::to_string(address)).c_str());
+		}
+#endif
+
 		*((SHORT*)address) = value;
 		return 0;
 	}
@@ -706,6 +744,13 @@ namespace LuaAPI {
 		}
 		DWORD address = lua_tointeger(L, 1);
 		int value = lua_tointeger(L, 2);
+
+#ifdef _DEBUG
+		if (!canWrite(address, 4)) {
+			return luaL_error(L, ("cannot write " + std::to_string(4) + " bytes to location: " + std::to_string(address)).c_str());
+		}
+#endif
+
 		*((int*)address) = value;
 		return 0;
 	}
@@ -718,6 +763,13 @@ namespace LuaAPI {
 		if (!lua_istable(L, 2)) {
 			return luaL_error(L, "the second argument should be a table");
 		}
+
+#ifdef _DEBUG
+		int length = lua_rawlen(L, 2);
+		if (!canWrite(address, length)) {
+			return luaL_error(L, ("cannot write " + std::to_string(length) + " bytes to location: " + std::to_string(address)).c_str());
+		}
+#endif
 
 		int i = 0;
 
@@ -835,6 +887,12 @@ namespace LuaAPI {
 		DWORD dst = lua_tointeger(L, 1);
 		DWORD src = lua_tointeger(L, 2);
 		int size = lua_tointeger(L, 3);
+
+#ifdef _DEBUG
+		if (!canWrite(dst, size)) {
+			return luaL_error(L, ("cannot write " + std::to_string(size) + " bytes to location: " + std::to_string(dst)).c_str());
+		}
+#endif
 
 		memcpy((void*)dst, (void*)src, size);
 
