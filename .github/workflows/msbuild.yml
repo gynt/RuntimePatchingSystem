@@ -38,7 +38,7 @@ jobs:
     steps:
     - name: Create nuget package
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget pack
+      run: nuget pack RuntimePatchingSystem.nuspec
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.2.3
