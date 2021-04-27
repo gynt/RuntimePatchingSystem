@@ -20,6 +20,8 @@
     <None Include="README.md" />
     <None Include="LICENSE" />
     <None Include=".gitignore" />
+    <None Include="RPS.targets" />
+    <None Include="RuntimePatchingSystem.nuspec" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -48,5 +50,8 @@
     <ClCompile Include="AOB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="RPS-propertiesui.xml" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>RPS</id>
+    <version>1.0.0</version>
+    <title>Runtime Patching System</title>
+    <authors>gynt</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">AGPL-3.0-or-later</license>
+    <projectUrl>https://github.com/gynt/RuntimePatchingSystem/</projectUrl>
+    <!--<iconUrl>http://icon_url_here_or_delete_this_line/</iconUrl>-->
+    <description>Runtime patching system that enables modifying program memory from lua scripts.</description>
+    <!--<releaseNotes>Summary of changes made in this release of the package.</releaseNotes>-->
+    <copyright>Copyright 2021</copyright>
+    <tags>Native native Lua Hook Detour Patching</tags>
+    <dependencies>
+      <dependency id="Lua" version="5.4.3" include="native" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="Debug\RPS.dll" target="build\native\bin\Win32\v142\Debug"/>
+    <file src="Debug\RPS.lib" target="build\native\lib\Win32\v142\Debug"/>
+    <file src="Debug\RPS.pdb" target="build\native\lib\Win32\v142\Debug"/>
+    <file src="Release\RPS.dll" target="build\native\bin\Win32\v142\Release"/>
+    <file src="Release\RPS.lib" target="build\native\lib\Win32\v142\Release"/>
+    <file src="RuntimePatchingSystem.h" target="build\native\include"/>
+    <file src="RPS.targets" target="build\native"/>
+    <file src="RPS-propertiesui.xml" target="build\native"/>
+    <file src="README.md" target="build"/>
+    <file src="README.md" target="build\native\doc"/>
+  </files>
+</package>

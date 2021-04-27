@@ -179,6 +179,7 @@ namespace LuaAPI {
 		return 1;
 	}
 
+
 	DWORD __stdcall executeLuaHook(unsigned long* args) {
 		lua_getglobal(L, luaHookedFunctionName);
 		if (lua_isfunction(L, -1)) {
