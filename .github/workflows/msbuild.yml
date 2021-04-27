@@ -14,9 +14,9 @@ env:
 jobs:
   build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        BUILD_CONFIGURATION: [Debug, Release]
+    # strategy:
+    #   matrix:
+    #     BUILD_CONFIGURATION: [Debug, Release]
     steps:
     - uses: actions/checkout@v2
 
@@ -27,17 +27,18 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
-    - name: Build
+    - name: Build Debug
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Platform=x86 /p:Configuration=${{matrix.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
-  package:
-    runs-on: windows-latest
-    needs: build
-    steps:
-    - name: List contents
-      run: ls
+      run: msbuild /m /p:Platform=x86 /p:Configuration=Debug ${{env.SOLUTION_FILE_PATH}}
+      
+    - name: Build Release
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Platform=x86 /p:Configuration=Release ${{env.SOLUTION_FILE_PATH}}
+
     - name: Create nuget package
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget pack RuntimePatchingSystem.nuspec
@@ -65,3 +66,4 @@ jobs:
         name: Debug binaries # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
         path: Debug/*.dll
+    
