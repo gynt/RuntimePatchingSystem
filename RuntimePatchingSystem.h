@@ -24,3 +24,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string pa
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath);
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua();
+
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_Find(std::string aob_hex);
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_FindInRange(std::string aob_hex, DWORD min, DWORD max);
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_FindInRange(char* content, char* mask, DWORD min, DWORD max);
