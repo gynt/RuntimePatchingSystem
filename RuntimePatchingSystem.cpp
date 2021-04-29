@@ -39,14 +39,14 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua() {
 	return LuaAPI::initializeLua();
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_Find(std::string aob_hex) {
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(std::string aob_hex) {
 	return AOB::Find(aob_hex);
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_FindInRange(std::string aob_hex, DWORD min, DWORD max) {
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(std::string aob_hex, DWORD min, DWORD max) {
 	return AOB::FindInRange(aob_hex, min, max);
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_AOB_FindInRange(char* content, char* mask, DWORD min, DWORD max) {
+RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(char* content, char* mask, DWORD min, DWORD max) {
 	return AOB::Scan(content, mask, min, max);
 }
