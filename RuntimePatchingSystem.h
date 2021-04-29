@@ -19,9 +19,6 @@ RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState();
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, bool includePrintRedirect);
 
-
-RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, bool includePrintRedirect);
-
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string packagePath);
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath);

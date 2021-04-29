@@ -974,7 +974,12 @@ namespace LuaAPI {
 
 		DWORD address = AOB::FindInRange(query, min, max);
 
-		lua_pushinteger(L, address);
+		if (address == 0) {
+			lua_pushnil(L);
+		}
+		else {
+			lua_pushinteger(L, address);
+		}
 
 		return 1;
 	}
