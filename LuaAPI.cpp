@@ -727,36 +727,17 @@ namespace LuaAPI {
 #endif
 
 	static int l_my_print(lua_State* L) {
-	//	int n = lua_gettop(L);  /* number of arguments */
-	//	int i;
-	//	for (i = 1; i <= n; i++) {  /* for each argument */
-	//		size_t l;
-	//		const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
-	//		if (i > 1)  /* not the first element? */
-	//			lua_writestring("\t", 1);  /* add a tab before it */
-	//		lua_writestring(s, l);  /* print it */
-	//		lua_pop(L, 1);  /* pop result */
-	//	}
-	//	lua_writeline();
-	//	return 0;
-	//}
-		int nargs = lua_gettop(L);
-		std::cout << "[LUA]: ";
-		for (int i = 1; i <= nargs; ++i) {
-			bool isNil = lua_isnil(L, i);
-			if (isNil) {
-				std::cout << "ERROR: cannot print a nil value";
-				return luaL_error(L, "cannot print a nil value");
-			}
-			else if (lua_istable(L, i)) {
-				std::cout << "table: ";
-			}
-			else {
-				std::cout << lua_tostring(L, i);
-			}
+		int n = lua_gettop(L);  /* number of arguments */
+		int i;
+		for (i = 1; i <= n; i++) {  /* for each argument */
+			size_t l;
+			const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
+			if (i > 1)  /* not the first element? */
+				lua_writestring("\t", 1);  /* add a tab before it */
+			lua_writestring(s, l);  /* print it */
+			lua_pop(L, 1);  /* pop result */
 		}
-		std::cout << std::endl;
-
+		lua_writeline();
 		return 0;
 	}
 
