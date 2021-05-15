@@ -58,7 +58,12 @@ namespace LuaAPI {
 		// point original function to gateway
 		newFunctionLocation = (DWORD)& gateway[0];
 
-		return TRUE;
+		return true;
+	}
+
+	int callGameFunction(lua_State* L) {
+		DWORD address = lua_tointeger(L, lua_upvalueindex(1));
+
 	}
 
 	lua_State* L;
@@ -73,6 +78,8 @@ namespace LuaAPI {
 		std::string luaHookFunctionName;
 		std::string luaOriginalFunctionName;
 		DWORD thisValue;
+		int luaTableRef;
+		int luaHookFunctionRef;
 
 		LuaHook(DWORD addr, int hookSize, int callingConv, int argCount, std::string luaHook, std::string luaOriginal) {
 			this->address = addr;
@@ -81,15 +88,46 @@ namespace LuaAPI {
 			this->argumentsCount = argCount - (int)(callingConv == 1); // To keep it clear for the lua users...
 			this->luaHookFunctionName = luaHook;
 			this->luaOriginalFunctionName = luaOriginal;
+			this->luaTableRef = -1;
+			this->luaHookFunctionRef = -1;
 		}
 
 		bool CreateCallHook() {
 			return DoCreateCallHook(this->address, (DWORD)LuaLandingFromCpp, this->hookSize, this->newOriginalFunctionLocation);
 		}
 
+		void setTableRef(lua_State* L) {
+			/** Pops a value from the stack and registers it in the registry. */
+			this->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
+		}
+
+		void setHookFunctionRef(lua_State* L) {
+			assert(this->luaTableRef != -1);
+
+			// Put the table at the top of the stack.
+			lua_rawgeti(L, LUA_REGISTRYINDEX, this->luaTableRef);
+
+			// Put the key on top of the stack.
+			lua_pushstring(L, this->luaHookFunctionName.c_str());
+
+			// Puts the value on top of the stack
+			lua_gettable(L, -2);
+
+			if (lua_isfunction(L, -1)) {
+				this->luaHookFunctionRef = luaL_ref(L, -1);
+			}
+			else {
+				throw "cannot set hookfunctionref because there is no function with the name: " + this->luaHookFunctionName;
+			}
+		}
+
 		void registerOriginalFunctionInLua() {
+
+			//lua_pushinteger(L, this->address);
+			//lua_pushcclosure(L, &cppCallCode, 1);
+
 			std::stringstream f("");
-			f << "function " << this->luaOriginalFunctionName << "(";
+			f << "function" << "(";
 			if (this->callingConvention == 1) {
 				f << "this";
 			}
@@ -117,17 +155,39 @@ namespace LuaAPI {
 			f << ")" << std::endl;
 			f << "end" << std::endl;
 
-			int result = luaL_dostring(L, f.str().c_str());
+			if (this->luaTableRef == -1) {
+				lua_pushglobaltable(L);
+			}
+			else {
+				// Put the table on the top of the stack.
+				lua_rawgeti(L, LUA_REGISTRYINDEX, this->luaTableRef);
+			}
+
+			// Put the key on the top of the stack
+			lua_pushstring(L, this->luaOriginalFunctionName.c_str());
+
+			// Put the function on top of the stack
+			int result = luaL_loadstring(L, f.str().c_str());
 			if (result != LUA_OK) {
 				std::cout << "[LUA API]: ERROR in registering function: " << lua_tostring(L, -1) << std::endl;
 				std::cout << "function that was going to be registered:" << std::endl << f.str() << std::endl;
 				lua_pop(L, 1); // pop off the error message;
+				lua_pop(L, 1); // Pop off the key;
+				lua_pop(L, 1); // Pop off the table
+				return;
 			}
+
+			lua_settable(L, -3);
+			lua_pop(L, 1); // Pop the table
+
 		}
 	};
 
 	std::map<DWORD, std::shared_ptr<LuaHook>> hookMapping;
 
+	/**
+		These variables are here to keep the raw assembly code easy and avoid this-parameter code.
+	*/
 	char luaHookedFunctionName[100];
 	DWORD newOriginalFunctionLocation;
 	DWORD functionLocation;
@@ -136,11 +196,14 @@ namespace LuaAPI {
 	std::string luaErrorMsg;
 	int luaCallingConvention;
 	DWORD currentECXValue;
+	int luaHookedFunctionTableReference;
 
 	// lua calls this function as: exposeCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0)
+	//  or lua calls this function as: exposeCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, env = table)
 	int luaExposeCode(lua_State* L) {
-		if (lua_gettop(L) != 4) {
-			return luaL_error(L, "expecting exactly 4 arguments");
+
+		if (lua_gettop(L) < 4 || lua_gettop(L) > 5) {
+			return luaL_error(L, "expecting exactly 4 or 5 arguments");
 		}
 
 		std::string luaOriginal = lua_tostring(L, 1);
@@ -154,6 +217,18 @@ namespace LuaAPI {
 		}
 
 		hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, 0, callingConvention, argumentCount, "", luaOriginal)));
+		
+		if (lua_gettop(L) == 5) {
+			// a custom env was specified, push it again to make it at the top of the stack.
+			lua_pushvalue(L, 5);
+			
+			// Pops off the table from the stack.
+			hookMapping[address]->setTableRef(L);
+		}
+		else {
+			// assume the env is the global env
+		}
+		
 		hookMapping[address]->newOriginalFunctionLocation = address;
 		hookMapping[address]->registerOriginalFunctionInLua();
 
@@ -161,10 +236,11 @@ namespace LuaAPI {
 	}
 
 	// lua calls this function as: hookCode(luaHook = "callbackTest", luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, hookSize = 5)
+	// or as: hookCode(luaHook = "callbackTest", luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, hookSize = 5, env)
 	int luaHookCode(lua_State* L) {
 
-		if (lua_gettop(L) != 6) {
-			return luaL_error(L, "expecting exactly 6 arguments");
+		if (lua_gettop(L) < 6 || lua_gettop(L) > 7) {
+			return luaL_error(L, "expecting exactly 6 or 7 arguments");
 		}
 
 		std::string luaHook = lua_tostring(L, 1);
@@ -172,7 +248,6 @@ namespace LuaAPI {
 		DWORD address = lua_tointeger(L, 3);
 		int argumentCount = lua_tointeger(L, 4);
 		int callingConvention = lua_tointeger(L, 5);
-		//DWORD thisValue = lua_tointeger(L, 6);
 		int hookSize = lua_tointeger(L, 6);
 
 		if (argumentCount > 8) {
@@ -180,7 +255,17 @@ namespace LuaAPI {
 		}
 
 		hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
+		if (lua_gettop(L) == 7) {
+			// a custom env was specified, push it again to make it at the top of the stack.
+			lua_pushvalue(L, 7);
 
+			// Pops off the table from the stack.
+			hookMapping[address]->setTableRef(L);
+		}
+		else {
+			// assume the env is the global env
+	
+		}
 		hookMapping[address]->CreateCallHook();
 		hookMapping[address]->registerOriginalFunctionInLua();
 
@@ -189,7 +274,16 @@ namespace LuaAPI {
 
 
 	DWORD __stdcall executeLuaHook(unsigned long* args) {
-		lua_getglobal(L, luaHookedFunctionName);
+
+		if (luaHookedFunctionTableReference == -1) {
+			lua_getglobal(L, luaHookedFunctionName);
+		}
+		else {
+			lua_rawgeti(L, LUA_REGISTRYINDEX, luaHookedFunctionTableReference);
+			lua_getfield(L, -1, luaHookedFunctionName);
+			lua_remove(L, lua_absindex(L, -2)); // remove the table
+		}
+
 		if (lua_isfunction(L, -1)) {
 			int totalArgCount = luaHookedFunctionArgCount;
 			if (luaCallingConvention == 1) {
@@ -235,6 +329,7 @@ namespace LuaAPI {
 			newOriginalFunctionLocation = value->newOriginalFunctionLocation;
 			functionLocation = value->address;
 			currentECXValue = liveECXValue;
+			luaHookedFunctionTableReference = value->luaTableRef;
 		}
 		else {
 
@@ -246,31 +341,31 @@ namespace LuaAPI {
 
 	// The user has called the luaOriginalFunctionName
 	int cppCallCode(lua_State* L) {
-		DWORD address = lua_tointeger(L, 1);
+		DWORD address = lua_tointeger(L, 1); //lua_upvalueindex(1)
 
 		SetLuaHookedFunctionParameters(address, 0);
 
 		if (luaCallingConvention == 1) {
-			int totalArgCount = luaHookedFunctionArgCount + 1;
-			if (lua_gettop(L) != totalArgCount + 1) {
+			int totalArgCount = luaHookedFunctionArgCount + 1;  
+			if (lua_gettop(L) != totalArgCount + 1) { // + 0
 				std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 				return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 			}
 
 			for (int i = 0; i < luaHookedFunctionArgCount; i++) {
-				fakeStack[i] = lua_tointeger(L, i + 2 + 1);
+				fakeStack[i] = lua_tointeger(L, i + 2 + 1); // i+1+1
 			}
 
-			currentECXValue = lua_tointeger(L, 2);
+			currentECXValue = lua_tointeger(L, 2); // 1
 		}
 		else {
-			if (lua_gettop(L) != luaHookedFunctionArgCount + 1) {
+			if (lua_gettop(L) != luaHookedFunctionArgCount + 1) { // + 0
 				std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 				return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 			}
 
 			for (int i = 0; i < luaHookedFunctionArgCount; i++) {
-				fakeStack[i] = lua_tointeger(L, i + 2);
+				fakeStack[i] = lua_tointeger(L, i + 2); // i + 1
 			}
 
 
@@ -446,15 +541,29 @@ namespace LuaAPI {
 		}
 	}
 
-	std::map<DWORD, std::pair<std::string, DWORD>> detourTargetMap;
+	class LuaDetour {
+	public:
+		std::string luaDetourFunctionName;
+		DWORD detourReturnLocation;
+		int luaTableRef;
+
+		LuaDetour(std::string luaDetourFunctionName, DWORD detourReturnLocation) {
+			this->luaDetourFunctionName = luaDetourFunctionName;
+			this->detourReturnLocation = detourReturnLocation;
+			this->luaTableRef = -1;
+		}
+	};
+
+	std::map<DWORD, std::shared_ptr<LuaDetour>> detourTargetMap;
 	DWORD currentDetourSource;
 	DWORD currentDetourReturn;
 	std::string currentDetourTarget;
 
 	// lua calls this as: detourCode(hookedFunctionName, address, hookSize)
+	// or as: detourCode(hookedFunctionName, address, hookSize, env)
 	int luaDetourCode(lua_State* L) {
-		if (lua_gettop(L) != 3) {
-			return luaL_error(L, "expecting exactly 3 arguments");
+		if (lua_gettop(L) < 3 || lua_gettop(L) > 4) {
+			return luaL_error(L, "expecting exactly 3 or 4 arguments");
 		}
 
 		std::string luaOriginal = lua_tostring(L, 1);
@@ -463,7 +572,18 @@ namespace LuaAPI {
 
 		DWORD ret;
 		DoCreateCallHook(address, (DWORD)detourLandingFunction, hookSize, ret);
-		detourTargetMap[address] = std::pair<std::string, DWORD>(luaOriginal, ret);
+
+		detourTargetMap[address] = std::make_shared<LuaDetour>(luaOriginal, ret);
+
+		if (lua_gettop(L) == 4) {
+			// push the env on top of the stack again.
+			lua_pushvalue(L, 4); 
+			detourTargetMap[address]->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
+		}
+		else {
+			// assume the global namespace.
+		}
+
 		return 0;
 	}
 
@@ -472,14 +592,21 @@ namespace LuaAPI {
 		if (!exists) {
 			assert(exists);
 		}
-		std::pair<std::string, DWORD> entry = detourTargetMap[address];
-		std::string luaFunction = entry.first;
-		DWORD retLoc = entry.second;
-		currentDetourReturn = retLoc;
+		std::shared_ptr<LuaDetour> entry = detourTargetMap[address];
+		currentDetourReturn = entry->detourReturnLocation;
+		int retLoc = entry->detourReturnLocation;
 
 		const std::vector<std::string> order = { "EDI", "ESI", "EBP", "ESP", "EBX", "EDX", "ECX", "EAX" };
 
-		lua_getglobal(L, luaFunction.c_str());
+		if (entry->luaTableRef == -1) {
+			lua_getglobal(L, entry->luaDetourFunctionName.c_str());
+		}
+		else {
+			lua_rawgeti(L, LUA_REGISTRYINDEX, entry->luaTableRef);
+			lua_getfield(L, -1, entry->luaDetourFunctionName.c_str());
+			lua_remove(L, lua_absindex(L, -2)); // remove the table
+		}
+		
 		if (lua_isfunction(L, -1)) {
 			lua_createtable(L, 0, 8);
 
@@ -603,6 +730,19 @@ namespace LuaAPI {
 #endif
 
 	static int l_my_print(lua_State* L) {
+	//	int n = lua_gettop(L);  /* number of arguments */
+	//	int i;
+	//	for (i = 1; i <= n; i++) {  /* for each argument */
+	//		size_t l;
+	//		const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
+	//		if (i > 1)  /* not the first element? */
+	//			lua_writestring("\t", 1);  /* add a tab before it */
+	//		lua_writestring(s, l);  /* print it */
+	//		lua_pop(L, 1);  /* pop result */
+	//	}
+	//	lua_writeline();
+	//	return 0;
+	//}
 		int nargs = lua_gettop(L);
 		std::cout << "[LUA]: ";
 		for (int i = 1; i <= nargs; ++i) {
@@ -612,7 +752,7 @@ namespace LuaAPI {
 				return luaL_error(L, "cannot print a nil value");
 			}
 			else if (lua_istable(L, i)) {
-				std::cout << "[object]";
+				std::cout << "table: ";
 			}
 			else {
 				std::cout << lua_tostring(L, i);
