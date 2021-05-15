@@ -61,10 +61,7 @@ namespace LuaAPI {
 		return true;
 	}
 
-	int callGameFunction(lua_State* L) {
-		DWORD address = lua_tointeger(L, lua_upvalueindex(1));
-
-	}
+	int cppCallCode(lua_State* L);
 
 	lua_State* L;
 
@@ -123,37 +120,34 @@ namespace LuaAPI {
 
 		void registerOriginalFunctionInLua() {
 
-			//lua_pushinteger(L, this->address);
-			//lua_pushcclosure(L, &cppCallCode, 1);
+			//std::stringstream f("");
+			//f << "function" << "(";
+			//if (this->callingConvention == 1) {
+			//	f << "this";
+			//}
+			//for (int i = 0; i < this->argumentsCount; i++) {
+			//	if (i != 0 || this->callingConvention == 1) {
+			//		f << ", ";
+			//	}
+			//	f << "arg" << i;
+			//}
+			//f << ")" << std::endl;
+			////f << "print('calling original c++ function at new location: " << this->newOriginalFunctionLocation << "')" << std::endl;
+			//f << "return callOriginal(" << this->address;
+			//if (this->callingConvention == 1) {
+			//	f << ", this";
+			//}
+			//if (this->argumentsCount > 0) {
+			//	for (int i = 0; i < this->argumentsCount; i++) {
+			//		//if (i != 0) { // no need for this because we prove the first argument.
+			//		f << ", ";
+			//		//}
+			//		f << "arg" << std::dec << i;
+			//	}
+			//}
 
-			std::stringstream f("");
-			f << "function" << "(";
-			if (this->callingConvention == 1) {
-				f << "this";
-			}
-			for (int i = 0; i < this->argumentsCount; i++) {
-				if (i != 0 || this->callingConvention == 1) {
-					f << ", ";
-				}
-				f << "arg" << i;
-			}
-			f << ")" << std::endl;
-			//f << "print('calling original c++ function at new location: " << this->newOriginalFunctionLocation << "')" << std::endl;
-			f << "return callOriginal(" << this->address;
-			if (this->callingConvention == 1) {
-				f << ", this";
-			}
-			if (this->argumentsCount > 0) {
-				for (int i = 0; i < this->argumentsCount; i++) {
-					//if (i != 0) { // no need for this because we prove the first argument.
-					f << ", ";
-					//}
-					f << "arg" << std::dec << i;
-				}
-			}
-
-			f << ")" << std::endl;
-			f << "end" << std::endl;
+			//f << ")" << std::endl;
+			//f << "end" << std::endl;
 
 			if (this->luaTableRef == -1) {
 				lua_pushglobaltable(L);
@@ -166,16 +160,19 @@ namespace LuaAPI {
 			// Put the key on the top of the stack
 			lua_pushstring(L, this->luaOriginalFunctionName.c_str());
 
-			// Put the function on top of the stack
-			int result = luaL_loadstring(L, f.str().c_str());
-			if (result != LUA_OK) {
-				std::cout << "[LUA API]: ERROR in registering function: " << lua_tostring(L, -1) << std::endl;
-				std::cout << "function that was going to be registered:" << std::endl << f.str() << std::endl;
-				lua_pop(L, 1); // pop off the error message;
-				lua_pop(L, 1); // Pop off the key;
-				lua_pop(L, 1); // Pop off the table
-				return;
-			}
+			lua_pushinteger(L, this->address);
+			lua_pushcclosure(L, &cppCallCode, 1);
+
+			//// Put the function on top of the stack
+			//int result = luaL_loadstring(L, f.str().c_str());
+			//if (result != LUA_OK) {
+			//	std::cout << "[LUA API]: ERROR in registering function: " << lua_tostring(L, -1) << std::endl;
+			//	std::cout << "function that was going to be registered:" << std::endl << f.str() << std::endl;
+			//	lua_pop(L, 1); // pop off the error message;
+			//	lua_pop(L, 1); // Pop off the key;
+			//	lua_pop(L, 1); // Pop off the table
+			//	return;
+			//}
 
 			lua_settable(L, -3);
 			lua_pop(L, 1); // Pop the table
@@ -341,31 +338,31 @@ namespace LuaAPI {
 
 	// The user has called the luaOriginalFunctionName
 	int cppCallCode(lua_State* L) {
-		DWORD address = lua_tointeger(L, 1); //lua_upvalueindex(1)
+		DWORD address = lua_tointeger(L, lua_upvalueindex(1)); //lua_upvalueindex(1)
 
 		SetLuaHookedFunctionParameters(address, 0);
 
 		if (luaCallingConvention == 1) {
-			int totalArgCount = luaHookedFunctionArgCount + 1;  
-			if (lua_gettop(L) != totalArgCount + 1) { // + 0
+			int totalArgCount = luaHookedFunctionArgCount + 1;  // ecx is passed as the first parameter
+			if (lua_gettop(L) != totalArgCount) {
 				std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 				return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 			}
 
 			for (int i = 0; i < luaHookedFunctionArgCount; i++) {
-				fakeStack[i] = lua_tointeger(L, i + 2 + 1); // i+1+1
+				fakeStack[i] = lua_tointeger(L, i + 1 + 1); // i+1+1 (1 to offset 0-base and 1 because this-parameter is ignored
 			}
 
-			currentECXValue = lua_tointeger(L, 2); // 1
+			currentECXValue = lua_tointeger(L, 1); // this parameter
 		}
 		else {
-			if (lua_gettop(L) != luaHookedFunctionArgCount + 1) { // + 0
+			if (lua_gettop(L) != luaHookedFunctionArgCount) { // + 0
 				std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 				return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 			}
 
 			for (int i = 0; i < luaHookedFunctionArgCount; i++) {
-				fakeStack[i] = lua_tointeger(L, i + 2); // i + 1
+				fakeStack[i] = lua_tointeger(L, i + 1); // i + 1 to offset the 0-base
 			}
 
 
