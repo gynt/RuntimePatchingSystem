@@ -74,13 +74,6 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
 	lua_pop(L, 1);
 }
 
-/** 
- * This function registers the available functions in a table with a certain name if desired.
- * When a custom name is specified, a table with that name will be put in the global namespace. If the namespace is set to null, the table is left on the lua stack.
- *
- * \param L the lua state
- * \param apiNamespace the namespace to put the functions in, can be "global", NULL, or a custom name.
- */
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string apiNamespace) {
 	if (apiNamespace == "_G" || apiNamespace == "global") {
 		lua_pushglobaltable(L);
@@ -98,11 +91,22 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string ap
 	}
 }
 
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L) {
+	return RPS_initializeLuaAPI(L, "global");
+}
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string packagePath) {
 	lua_getglobal(L, "package");
 	lua_pushstring(L, "path");
 	lua_pushstring(L, packagePath.c_str());
+	lua_settable(L, -3);
+	lua_pop(L, 1);
+}
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string packageCPath) {
+	lua_getglobal(L, "package");
+	lua_pushstring(L, "cpath");
+	lua_pushstring(L, packageCPath.c_str());
 	lua_settable(L, -3);
 	lua_pop(L, 1);
 }
@@ -135,14 +139,12 @@ RUNTIMEPATCHINGSYSTEM_API bool RPS_initializeCodeHeap() {
 	return codeHeap != 0;
 }
 
-RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, std::string packagePath, bool initializePrintRedirect) {
+RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, bool initializePrintRedirect) {
 	RPS_initializeLua();
 
 	RPS_initializeCodeHeap();
 
 	luaL_openlibs(L);
-
-	RPS_setupPackagePath(L, packagePath);
 
 	if (initializePrintRedirect) RPS_initializePrintRedirect(L);
 
@@ -150,6 +152,10 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, std
 
 
 	RPS_runBootstrapFile(L, bootstrapFilePath);
+}
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath) {
+	return RPS_initialize(bootstrapFilePath, true);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize() {
