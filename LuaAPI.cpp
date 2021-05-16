@@ -12,9 +12,7 @@
 
 namespace LuaAPI {
 
-	constexpr INT8 NOP = (INT8)0x90;
-	constexpr INT8 JMP = (INT8)0xE9;
-	constexpr INT8 CALL = (INT8)0xE8;
+
 
 	void LuaLandingFromCpp();
 	void detourLandingFunction();
@@ -22,11 +20,15 @@ namespace LuaAPI {
 	int CALLING_CONV_CALLER = 0; //add esp, 4*argumentCount
 	int CALLING_CONV_THISCALL = 1; //mov ecx, address
 	int CALLING_CONV_STDCALL = 2; //special ret 0x, no this parameter
-	//int CALLING_CONV_FASTCALL = 2; ?
+	//int CALLING_CONV_FASTCALL = 3; ?
 
 	HANDLE heap;
 
 	bool DoCreateCallHook(DWORD from_address, DWORD to_address, int hookSize, DWORD& newFunctionLocation) {
+		constexpr INT8 NOP = (INT8)0x90;
+		constexpr INT8 JMP = (INT8)0xE9;
+		constexpr INT8 CALL = (INT8)0xE8;
+
 		int size = hookSize;
 		if (size < 5) return FALSE;
 
@@ -61,7 +63,7 @@ namespace LuaAPI {
 		return true;
 	}
 
-	int cppCallCode(lua_State* L);
+	int luaCallMachineCode(lua_State* L);
 
 	lua_State* L;
 
@@ -120,35 +122,6 @@ namespace LuaAPI {
 
 		void registerOriginalFunctionInLua() {
 
-			//std::stringstream f("");
-			//f << "function" << "(";
-			//if (this->callingConvention == 1) {
-			//	f << "this";
-			//}
-			//for (int i = 0; i < this->argumentsCount; i++) {
-			//	if (i != 0 || this->callingConvention == 1) {
-			//		f << ", ";
-			//	}
-			//	f << "arg" << i;
-			//}
-			//f << ")" << std::endl;
-			////f << "print('calling original c++ function at new location: " << this->newOriginalFunctionLocation << "')" << std::endl;
-			//f << "return callOriginal(" << this->address;
-			//if (this->callingConvention == 1) {
-			//	f << ", this";
-			//}
-			//if (this->argumentsCount > 0) {
-			//	for (int i = 0; i < this->argumentsCount; i++) {
-			//		//if (i != 0) { // no need for this because we prove the first argument.
-			//		f << ", ";
-			//		//}
-			//		f << "arg" << std::dec << i;
-			//	}
-			//}
-
-			//f << ")" << std::endl;
-			//f << "end" << std::endl;
-
 			if (this->luaTableRef == -1) {
 				lua_pushglobaltable(L);
 			}
@@ -161,18 +134,7 @@ namespace LuaAPI {
 			lua_pushstring(L, this->luaOriginalFunctionName.c_str());
 
 			lua_pushinteger(L, this->address);
-			lua_pushcclosure(L, &cppCallCode, 1);
-
-			//// Put the function on top of the stack
-			//int result = luaL_loadstring(L, f.str().c_str());
-			//if (result != LUA_OK) {
-			//	std::cout << "[LUA API]: ERROR in registering function: " << lua_tostring(L, -1) << std::endl;
-			//	std::cout << "function that was going to be registered:" << std::endl << f.str() << std::endl;
-			//	lua_pop(L, 1); // pop off the error message;
-			//	lua_pop(L, 1); // Pop off the key;
-			//	lua_pop(L, 1); // Pop off the table
-			//	return;
-			//}
+			lua_pushcclosure(L, &luaCallMachineCode, 1);
 
 			lua_settable(L, -3);
 			lua_pop(L, 1); // Pop the table
@@ -207,7 +169,6 @@ namespace LuaAPI {
 		DWORD address = lua_tointeger(L, 2);
 		int argumentCount = lua_tointeger(L, 3);
 		int callingConvention = lua_tointeger(L, 4);
-		//DWORD thisValue = lua_tointeger(L, 5);
 
 		if (argumentCount > 8) {
 			return luaL_error(L, "too many arguments specified, max is 8: " + argumentCount);
@@ -337,7 +298,7 @@ namespace LuaAPI {
 	DWORD fakeStack[20];
 
 	// The user has called the luaOriginalFunctionName
-	int cppCallCode(lua_State* L) {
+	int luaCallMachineCode(lua_State* L) {
 		DWORD address = lua_tointeger(L, lua_upvalueindex(1)); //lua_upvalueindex(1)
 
 		SetLuaHookedFunctionParameters(address, 0);
@@ -1102,13 +1063,14 @@ namespace LuaAPI {
 		return 1;
 	}
 
+
 	void initializeLuaAPI(lua_State* L, bool includePrintRedirect) {
 		if (heap == 0) {
 			heap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
 		}
 
 		lua_register(L, "hookCode", luaHookCode);
-		lua_register(L, "callOriginal", cppCallCode);
+		lua_register(L, "callOriginal", luaCallMachineCode);
 		lua_register(L, "exposeCode", luaExposeCode);
 		lua_register(L, "detourCode", luaDetourCode);
 		lua_register(L, "allocate", luaAllocate);
@@ -1133,7 +1095,7 @@ namespace LuaAPI {
 		lua_register(L, "scanForAOB", luaScanForAOB);
 
 		if (includePrintRedirect) {
-			lua_getglobal(L, "_G");
+			lua_pushglobaltable(L);
 			luaL_setfuncs(L, printlib, 0);
 			lua_pop(L, 1);
 		}
