@@ -1,52 +1,204 @@
+
 #include "framework.h"
+#include <iostream>
+#include <sstream>
+#include <set>
+#include <map>
+#include <assert.h>
+#include <vector>
+
 #include "RuntimePatchingSystem.h"
-#include "LuaAPI.h"
-#include "AOB.h"
+#include "CodeFunctions.h"
+#include "MemoryFunctions.h"
+#include "UtilityFunctions.h"
 
-RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, std::string packagePath) {
-	return LuaAPI::initialize(bootstrapFilePath, packagePath);
+
+
+
+
+static int l_my_print(lua_State* L) {
+	int n = lua_gettop(L);  /* number of arguments */
+	int i;
+	for (i = 1; i <= n; i++) {  /* for each argument */
+		size_t l;
+		const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
+		if (i > 1)  /* not the first element? */
+			lua_writestring("\t", 1);  /* add a tab before it */
+		lua_writestring(s, l);  /* print it */
+		lua_pop(L, 1);  /* pop result */
+	}
+	lua_writeline();
+	return 0;
 }
 
-RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize() {
-	return LuaAPI::deinitialize();
+static const struct luaL_Reg printlib[] = {
+  {"print", l_my_print},
+  {NULL, NULL} /* end of array */
+};
+
+
+
+
+const struct luaL_Reg RPS_LIB[] = {
+	{"hookCode", luaHookCode},
+	{"callOriginal", luaCallMachineCode},
+	{"exposeCode", luaExposeCode},
+	{"detourCode", luaDetourCode},
+	{"allocate", luaAllocate},
+	{"allocateCode", luaAllocateRWE},
+
+	{"readByte", luaReadByte},
+	{"readSmallInteger", luaReadSmallInteger},
+	{"readInteger", luaReadInteger},
+	{"readString", luaReadString},
+	{"readBytes", luaReadBytes},
+
+	{"writeByte", luaWriteByte},
+	{"writeSmallInteger", luaWriteSmallInteger},
+	{"writeInteger", luaWriteInteger},
+	{"writeBytes", luaWriteBytes},
+	{"writeCode", luaWriteCode},
+
+	{"copyMemory", luaMemCpy},
+
+	{"registerString", registerString},
+
+	{"scanForAOB", luaScanForAOB},
+	{NULL, NULL} /* end of array */
+};
+
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
+	lua_pushglobaltable(L);
+	luaL_setfuncs(L, printlib, 0);
+	lua_pop(L, 1);
 }
 
-RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
-	return LuaAPI::executeSnippet(code);
+/** 
+ * This function registers the available functions in a table with a certain name if desired.
+ * When a custom name is specified, a table with that name will be put in the global namespace. If the namespace is set to null, the table is left on the lua stack.
+ *
+ * \param L the lua state
+ * \param apiNamespace the namespace to put the functions in, can be "global", NULL, or a custom name.
+ */
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string apiNamespace) {
+	if (apiNamespace == "_G" || apiNamespace == "global") {
+		lua_pushglobaltable(L);
+		luaL_setfuncs(L, RPS_LIB, 0);
+		lua_pop(L, 1);
+	}
+	else if (apiNamespace.empty() || apiNamespace.size() == 0) {
+		luaL_newlib(L, RPS_LIB); // the table is left intentionally on the stack.
+	}
+	else {
+		lua_pushglobaltable(L);
+		luaL_newlib(L, RPS_LIB);
+		lua_setfield(L, -1, apiNamespace.c_str());
+		lua_pop(L, 1);
+	}
 }
 
-RUNTIMEPATCHINGSYSTEM_API int RPS_getCurrentStackSize() {
-	return LuaAPI::getCurrentStackSize();
-}
-
-RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
-	return LuaAPI::getLuaState();
-}
-
-RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, bool includePrintRedirect) {
-	return LuaAPI::initializeLuaAPI(L, includePrintRedirect);
-}
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string packagePath) {
-	return LuaAPI::setupPackagePath(L, packagePath);
+	lua_getglobal(L, "package");
+	lua_pushstring(L, "path");
+	lua_pushstring(L, packagePath.c_str());
+	lua_settable(L, -3);
+	lua_pop(L, 1);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath) {
-	return LuaAPI::runBootstrapFile(L, bootstrapFilePath);
+	int stackSize = lua_gettop(L);
+
+	int r = luaL_dofile(L, bootstrapFilePath.c_str());
+
+	if (r == LUA_OK) {
+		std::cout << "[LUA]: loaded LUA API." << std::endl;
+
+		lua_pop(L, lua_gettop(L) - stackSize);
+	}
+	else {
+		std::string errormsg = lua_tostring(L, -1);
+		std::cout << "[LUA]: failed to load LUA API: " << errormsg << std::endl;
+		lua_pop(L, 1); // pop off the error message;
+	}
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua() {
-	return LuaAPI::initializeLua();
+	L = luaL_newstate();
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(std::string aob_hex) {
-	return AOB::Find(aob_hex);
+RUNTIMEPATCHINGSYSTEM_API bool RPS_initializeCodeHeap() {
+	if (codeHeap == 0) {
+		codeHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
+	}
+	return codeHeap != 0;
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(std::string aob_hex, DWORD min, DWORD max) {
-	return AOB::FindInRange(aob_hex, min, max);
+RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, std::string packagePath, bool initializePrintRedirect) {
+	RPS_initializeLua();
+
+	RPS_initializeCodeHeap();
+
+	luaL_openlibs(L);
+
+	RPS_setupPackagePath(L, packagePath);
+
+	if (initializePrintRedirect) RPS_initializePrintRedirect(L);
+
+	RPS_initializeLuaAPI(L, "global");
+
+
+	RPS_runBootstrapFile(L, bootstrapFilePath);
 }
 
-RUNTIMEPATCHINGSYSTEM_API DWORD RPS_findAOB(char* content, char* mask, DWORD min, DWORD max) {
-	return AOB::Scan(content, mask, min, max);
+RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize() {
+	lua_close(L);
+
+	if (codeHeap != 0) {
+		HeapDestroy(codeHeap);
+	}
 }
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
+	int before = lua_gettop(L);
+	int r = luaL_dostring(L, code.c_str());
+	if (r == LUA_OK) {
+		int after = lua_gettop(L);
+		for (int i = before; i < after; i++) {
+			int index = before - (i + 1);
+			if (lua_isstring(L, index)) {
+				std::cout << lua_tostring(L, index) << std::endl;
+			}
+			else if (lua_isnumber(L, index)) {
+				std::cout << lua_tonumber(L, index) << std::endl;
+			}
+			else if (lua_isboolean(L, index)) {
+				std::cout << lua_toboolean(L, index) << std::endl;
+			}
+			else if (lua_isnil(L, index)) {
+				std::cout << "nil" << std::endl;
+			}
+			else {
+				std::cout << "[object]" << std::endl;
+			}
+		}
+		lua_pop(L, after - before);
+
+	}
+	else {
+		std::string errormsg = lua_tostring(L, -1);
+		std::cout << "[LUA]: " << errormsg << std::endl;
+		lua_pop(L, 1); // pop off the error message;
+	}
+}
+
+RUNTIMEPATCHINGSYSTEM_API int RPS_getCurrentStackSize() {
+	return lua_gettop(L);
+}
+
+RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
+	return L;
+}
+
+

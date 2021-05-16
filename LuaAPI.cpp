@@ -9,6 +9,9 @@
 #include "AOB.h"
 
 #include "LuaAPI.h"
+#include "CodeFunctions.h"
+#include "MemoryFunctions.h"
+#include "UtilityFunctions.h"
 
 namespace LuaAPI {
 
@@ -22,7 +25,7 @@ namespace LuaAPI {
 	int CALLING_CONV_STDCALL = 2; //special ret 0x, no this parameter
 	//int CALLING_CONV_FASTCALL = 3; ?
 
-	HANDLE heap;
+	HANDLE codeHeap;
 
 	bool DoCreateCallHook(DWORD from_address, DWORD to_address, int hookSize, DWORD& newFunctionLocation) {
 		constexpr INT8 NOP = (INT8)0x90;
@@ -671,22 +674,6 @@ namespace LuaAPI {
 		}
 	}
 
-#ifdef _DEBUG
-
-	bool canWrite(DWORD address, int length) {
-		SYSTEM_INFO si;
-		GetSystemInfo(&si);
-		MEMORY_BASIC_INFORMATION mi;
-		SIZE_T vq = VirtualQuery((void*)address, &mi, sizeof(mi));
-		if (vq == ERROR_INVALID_PARAMETER || vq == 0) {
-			std::cout << "ERROR CODE: " << GetLastError() << std::endl;
-			return false;
-		}
-		
-		return mi.Protect & (PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE | PAGE_WRITECOPY | PAGE_READWRITE);
-	}
-#endif
-
 	static int l_my_print(lua_State* L) {
 		int n = lua_gettop(L);  /* number of arguments */
 		int i;
@@ -708,398 +695,66 @@ namespace LuaAPI {
 	};
 
 
-	int luaReadByte(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "expected exactly 1 argument");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		lua_pushinteger(L, *((BYTE*)address));
-		return 1;
+
+	const struct luaL_Reg RPS_LIB[] = {
+		{"hookCode", luaHookCode},
+		{"callOriginal", luaCallMachineCode},
+		{"exposeCode", luaExposeCode},
+		{"detourCode", luaDetourCode},
+		{"allocate", luaAllocate},
+		{"allocateCode", luaAllocateRWE},
+
+		{"readByte", luaReadByte},
+		{"readSmallInteger", luaReadSmallInteger},
+		{"readInteger", luaReadInteger},
+		{"readString", luaReadString},
+		{"readBytes", luaReadBytes},
+
+		{"writeByte", luaWriteByte},
+		{"writeSmallInteger", luaWriteSmallInteger},
+		{"writeInteger", luaWriteInteger},
+		{"writeBytes", luaWriteBytes},
+		{"writeCode", luaWriteCode},
+
+		{"copyMemory", luaMemCpy},
+
+		{"registerString", registerString},
+
+		{"scanForAOB", luaScanForAOB},
+		{NULL, NULL} /* end of array */
+	};
+
+
+	void initializePrintRedirect(lua_State* L) {
+		lua_pushglobaltable(L);
+		luaL_setfuncs(L, printlib, 0);
+		lua_pop(L, 1);
 	}
 
-	int luaReadSmallInteger(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "expected exactly 1 argument");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		lua_pushinteger(L, *((SHORT*)address));
-		return 1;
-	}
-
-	int luaReadInteger(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "expected exactly 1 argument");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		lua_pushinteger(L, *((int*)address));
-		return 1;
-	}
-
-	int luaReadString(lua_State* L) {
-		DWORD address = 0;
-		int maxLength = 0;
-		int length = 0;
-		bool wide = false;
-		if (lua_gettop(L) == 0) {
-			return luaL_error(L, "too few arguments passed to readString");
-		}
-		address = lua_tointeger(L, 1);
-		if (lua_gettop(L) == 2) {
-			maxLength = lua_tointeger(L, 2);
-		}
-		if (lua_gettop(L) == 3) {
-			wide = lua_tointeger(L, 3) == 1;
-		}
-
-		if (wide || maxLength) {
-			return luaL_error(L, "sorry, maxlength and wide are not supported yet.");
-		}
-
-		std::string result((char*)address);
-		lua_pushstring(L, result.c_str());
-
-		return 1;
-	}
-
-	int luaReadBytes(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-
-		DWORD address = lua_tointeger(L, 1);
-		int size = lua_tointeger(L, 2);
-
-		lua_createtable(L, size, 0);
-
-		for (int i = 0; i < size; i++) {
-			unsigned char value = *((BYTE*)(address + i));
-			lua_pushinteger(L, (lua_Integer)i + 1);
-			lua_pushinteger(L, value);
-			lua_settable(L, -3);  /* 3rd element from the stack top */
-		}
-
-		// we pass the table back;
-
-		return 1;
-	}
-
-	int luaWriteByte(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		BYTE value = lua_tointeger(L, 2);
-
-#ifdef _DEBUG
-		if (!canWrite(address, 1)) {
-			return luaL_error(L, ("cannot write " + std::to_string(1) + " bytes to location: " + std::to_string(address)).c_str());
-		}
-#endif
-
-		*((BYTE*)address) = value;
-		return 0;
-	}
-
-	int luaWriteSmallInteger(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		SHORT value = lua_tointeger(L, 2);
-
-#ifdef _DEBUG
-		if (!canWrite(address, 2)) {
-			return luaL_error(L, ("cannot write " + std::to_string(2) + " bytes to location: " + std::to_string(address)).c_str());
-		}
-#endif
-
-		*((SHORT*)address) = value;
-		return 0;
-	}
-
-	int luaWriteInteger(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		int value = lua_tointeger(L, 2);
-
-#ifdef _DEBUG
-		if (!canWrite(address, 4)) {
-			return luaL_error(L, ("cannot write " + std::to_string(4) + " bytes to location: " + std::to_string(address)).c_str());
-		}
-#endif
-
-		*((int*)address) = value;
-		return 0;
-	}
-
-	int luaWriteBytes(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		if (!lua_istable(L, 2)) {
-			return luaL_error(L, "the second argument should be a table");
-		}
-
-#ifdef _DEBUG
-		int length = lua_rawlen(L, 2);
-		if (!canWrite(address, length)) {
-			return luaL_error(L, ("cannot write " + std::to_string(length) + " bytes to location: " + std::to_string(address)).c_str());
-		}
-#endif
-
-		int i = 0;
-
-		lua_pushvalue(L, 2); // push the table again; so that it is at -1
-
-		/* table is in the stack at index 't' */
-		lua_pushnil(L);  /* first key */
-		while (lua_next(L, -2) != 0) {
-			/* uses 'key' (at index -2) and 'value' (at index -1) */
-			if (!lua_isinteger(L, -1)) {
-				//lua_pushliteral(L, "The return value table must have integer values");
-				//lua_error(L);
-				return luaL_error(L, "The return value table must have integer values");
-			}
-
-			int value = lua_tointeger(L, -1);
-			if (value < 0) {
-				return luaL_error(L, "The values must all be positive");
-			}
-
-			*((BYTE*)(address + i)) = value;
-			i += 1;
-
-			/* removes 'value'; keeps 'key' for next iteration */
-			lua_pop(L, 1);
-		}
-		//lua_next pops the key from the stack, if we reached the end, there is no key on the stack.
-
-		lua_pop(L, 1); //removes 'table'
-
-		// TODO: more popping?
-
-		return 0;
-	}
-
-	int convertTableToByteStream(lua_State* L, std::stringstream* s) {
-		int i = 0;
-
-		//lua_pushvalue(L, 2); // push the table again; so that it is at -1
-
-		/* table is in the stack at index 't' */
-		lua_pushnil(L);  /* first key */
-		while (lua_next(L, -2) != 0) {
-			/* uses 'key' (at index -2) and 'value' (at index -1) */
-			if (!lua_isinteger(L, -1)) {
-				//lua_pushliteral(L, "The return value table must have integer values");
-				//lua_error(L);
-				return -1;
-			}
-
-			unsigned int value = lua_tointeger(L, -1);
-
-			if (value <= 0xff && value >= 0x00) {
-				s->write(reinterpret_cast<const char*>(&value), 1);
-			}
-			else {
-				s->write(reinterpret_cast<const char*>(&value), 4);
-			}
-
-
-			i += 1;
-
-			/* removes 'value'; keeps 'key' for next iteration */
-			lua_pop(L, 1);
-		}
-
-
-		return 0;
-	}
-
-	int luaWriteCode(lua_State* L) {
-		if (lua_gettop(L) != 2) {
-			return luaL_error(L, "expected exactly 2 arguments");
-		}
-		DWORD address = lua_tointeger(L, 1);
-		if (!lua_istable(L, 2)) {
-			return luaL_error(L, "the second argument should be a table");
-		}
-
-		// write an intermediate state here that extracts the table and converts bytes to bytes
-// and that converts integers to 4 bytes in big endian order.
-// 
-		lua_pushvalue(L, 2); // push the table so we can be sure it is at -1
-		std::stringstream bytes;
-		int returnCode = convertTableToByteStream(L, &bytes);
-		lua_pop(L, 1); // pop the table;
-
-		if (returnCode == -1) {
-			return luaL_error(L, "The return value table must have integer values");
-		}
-		else if (returnCode == -2) {
-			return luaL_error(L, "The values must all be positive");
-		}
-
-		bytes.seekg(0, bytes.end);
-		int size = bytes.tellg();
-		bytes.seekg(0, bytes.beg);
-
-		DWORD oldProtect;
-		VirtualProtect((LPVOID)address, size, PAGE_EXECUTE_READWRITE, &oldProtect);
-
-		memcpy((void*)address, &bytes.str().data()[0], size);
-
-		VirtualProtect((LPVOID)address, size, oldProtect, &oldProtect);
-
-		return 0;
-	}
-
-	int luaMemCpy(lua_State* L) {
-
-		if (lua_gettop(L) != 3) {
-			return luaL_error(L, "expected exactly 3 arguments");
-		}
-
-		DWORD dst = lua_tointeger(L, 1);
-		DWORD src = lua_tointeger(L, 2);
-		int size = lua_tointeger(L, 3);
-
-#ifdef _DEBUG
-		if (!canWrite(dst, size)) {
-			return luaL_error(L, ("cannot write " + std::to_string(size) + " bytes to location: " + std::to_string(dst)).c_str());
-		}
-#endif
-
-		memcpy((void*)dst, (void*)src, size);
-
-		return 0;
-	}
-
-
-	std::set<std::string> stringSet;
-
-	int registerString(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "Wrong number of arguments passed");
-		}
-
-		std::string target = lua_tostring(L, 1);
-
-		std::pair<std::set<std::string>::iterator, bool> p = stringSet.insert(target);
-
-		std::set<std::string>::iterator it = p.first;
-		lua_pushinteger(L, (DWORD)p.first->c_str());
-
-		return 1;
-	}
-
-	int luaAllocateRWE(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "Wrong number of arguments passed");
-		}
-
-		int size = lua_tonumber(L, 1);
-
-		SYSTEM_INFO system_info;
-		GetSystemInfo(&system_info);
-		auto const page_size = system_info.dwPageSize;
-
-		LPVOID adr = HeapAlloc(heap, 0, size);
-		if (adr == 0) {
-			return luaL_error(L, "failed to allocate executable memory");
-		}
-
-		lua_pushinteger(L, (DWORD_PTR)adr);
-
-		return 1;
-	}
-
-	int luaAllocate(lua_State* L) {
-		if (lua_gettop(L) != 1) {
-			return luaL_error(L, "Wrong number of arguments passed");
-		}
-
-		int size = lua_tonumber(L, 1);
-
-		void* memory = malloc(size);
-
-		lua_pushinteger(L, (DWORD_PTR)memory);
-
-		return 1;
-	}
-
-	int luaScanForAOB(lua_State* L) {
-		DWORD min = 0;
-		DWORD max = 0x7FFFFFFF;
-
-		if (lua_gettop(L) == 1) {
-
-		}
-		else if (lua_gettop(L) == 2) {
-			min = lua_tointeger(L, 2);
-		}
-		else if (lua_gettop(L) == 3) {
-			min = lua_tointeger(L, 2);
-			max = lua_tointeger(L, 3);
-		}
-		else {
-			return luaL_error(L, "Expected exactly one, two, or three arguments");
-		}
-
-		std::string query = lua_tostring(L, 1);
-
-		DWORD address = AOB::FindInRange(query, min, max);
-
-		if (address == 0) {
-			lua_pushnil(L);
-		}
-		else {
-			lua_pushinteger(L, address);
-		}
-
-		return 1;
-	}
-
-
-	void initializeLuaAPI(lua_State* L, bool includePrintRedirect) {
-		if (heap == 0) {
-			heap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
-		}
-
-		lua_register(L, "hookCode", luaHookCode);
-		lua_register(L, "callOriginal", luaCallMachineCode);
-		lua_register(L, "exposeCode", luaExposeCode);
-		lua_register(L, "detourCode", luaDetourCode);
-		lua_register(L, "allocate", luaAllocate);
-		lua_register(L, "allocateCode", luaAllocateRWE);
-
-		lua_register(L, "readByte", luaReadByte);
-		lua_register(L, "readSmallInteger", luaReadSmallInteger);
-		lua_register(L, "readInteger", luaReadInteger);
-		lua_register(L, "readString", luaReadString);
-		lua_register(L, "readBytes", luaReadBytes);
-
-		lua_register(L, "writeByte", luaWriteByte);
-		lua_register(L, "writeSmallInteger", luaWriteSmallInteger);
-		lua_register(L, "writeInteger", luaWriteInteger);
-		lua_register(L, "writeBytes", luaWriteBytes);
-		lua_register(L, "writeCode", luaWriteCode);
-
-		lua_register(L, "copyMemory", luaMemCpy);
-
-		lua_register(L, "registerString", registerString);
-
-		lua_register(L, "scanForAOB", luaScanForAOB);
-
-		if (includePrintRedirect) {
+	/**
+	 * This function registers the available functions in a table with a certain name if desired.
+	 * When a custom name is specified, a table with that name will be put in the global namespace. If the namespace is set to null, the table is left on the lua stack.
+	 * 
+	 * \param L the lua state
+	 * \param apiNamespace the namespace to put the functions in, can be "global", NULL, or a custom name. 
+	 */
+	void initializeLuaAPI(lua_State* L, std::string apiNamespace) {
+		if (apiNamespace == "_G" || apiNamespace == "global") {
 			lua_pushglobaltable(L);
-			luaL_setfuncs(L, printlib, 0);
+			luaL_setfuncs(L, RPS_LIB, 0);
+			lua_pop(L, 1);
+		}
+		else if (apiNamespace.empty() || apiNamespace.size() == 0) {
+			luaL_newlib(L, RPS_LIB); // the table is left intentionally on the stack.
+		}
+		else {
+			lua_pushglobaltable(L);
+			luaL_newlib(L, RPS_LIB);
+			lua_setfield(L, -1, apiNamespace.c_str());
 			lua_pop(L, 1);
 		}
 	}
+
 
 	void setupPackagePath(lua_State *L, std::string packagePath) {
 		lua_getglobal(L, "package");
@@ -1130,14 +785,26 @@ namespace LuaAPI {
 		L = luaL_newstate();
 	}
 
-	void initialize(std::string bootstrapFilePath, std::string packagePath) {
+	bool initializeCodeHeap() {
+		if (codeHeap == 0) {
+			codeHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
+		}
+		return codeHeap != 0;
+	}
+
+	void initialize(std::string bootstrapFilePath, std::string packagePath, bool initializePrintRedirect) {
 		initializeLua();
+
+		initializeCodeHeap();
 
 		luaL_openlibs(L);
 
 		setupPackagePath(L, packagePath);
 
-		initializeLuaAPI(L, true);
+		if(initializePrintRedirect) LuaAPI::initializePrintRedirect(L);
+
+		initializeLuaAPI(L, "global");
+		
 
 		runBootstrapFile(L, bootstrapFilePath);
 	}
@@ -1145,8 +812,8 @@ namespace LuaAPI {
 	void deinitialize() {
 		lua_close(L);
 
-		if (heap != 0) {
-			HeapDestroy(heap);
+		if (codeHeap != 0) {
+			HeapDestroy(codeHeap);
 		}
 	}
 
