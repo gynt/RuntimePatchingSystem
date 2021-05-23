@@ -164,7 +164,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenLibs() {
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenBase() {
-	luaopen_base(L);
+	luaL_requiref(L, "base", luaopen_base, true);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, bool initializePrintRedirect) {
