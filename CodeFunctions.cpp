@@ -155,8 +155,8 @@ int luaExposeCode(lua_State* L) {
 	int argumentCount = lua_tointeger(L, 3);
 	int callingConvention = lua_tointeger(L, 4);
 
-	if (argumentCount > 8) {
-		return luaL_error(L, "too many arguments specified, max is 8: " + argumentCount);
+	if (argumentCount > 11) {
+		return luaL_error(L, "too many arguments specified, max is 11: " + argumentCount);
 	}
 
 	hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, 0, callingConvention, argumentCount, "", luaOriginal)));
@@ -193,8 +193,8 @@ int luaHookCode(lua_State* L) {
 	int callingConvention = lua_tointeger(L, 5);
 	int hookSize = lua_tointeger(L, 6);
 
-	if (argumentCount > 8) {
-		return luaL_error(L, "too many arguments specified, max is 8: " + argumentCount);
+	if (argumentCount > 11) {
+		return luaL_error(L, "too many arguments specified, max is 11: " + argumentCount);
 	}
 
 	hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
@@ -349,6 +349,12 @@ int luaCallMachineCode(lua_State* L) {
 		je add0x1C;
 		cmp ecx, 8;
 		je add0x20;
+		cmp ecx, 9;
+		je add0x24;
+		cmp ecx, 10;
+		je add0x28;
+		cmp ecx, 11;
+		je add0x2C;
 	add0x00:
 		call eax;
 		add esp, 0x00;
@@ -384,6 +390,18 @@ int luaCallMachineCode(lua_State* L) {
 	add0x20:
 		call eax;
 		add esp, 0x20;
+		jmp eor;
+	add0x24:
+		call eax;
+		add esp, 0x24;
+		jmp eor;
+	add0x28:
+		call eax;
+		add esp, 0x28;
+		jmp eor;
+	add0x2C:
+		call eax;
+		add esp, 0x2C;
 		jmp eor;
 	callee:
 		mov eax, newOriginalFunctionLocation;
@@ -440,6 +458,12 @@ void __declspec(naked) LuaLandingFromCpp() {
 		je ret0x1C;
 		cmp eax, 8;
 		je ret0x20;
+		cmp eax, 9;
+		je ret0x24;
+		cmp eax, 10;
+		je ret0x28;
+		cmp eax, 11;
+		je ret0x2C;
 		jmp retNone;
 
 	ret0x0:
@@ -477,6 +501,18 @@ void __declspec(naked) LuaLandingFromCpp() {
 	ret0x20:
 		call executeLuaHook;
 		ret 0x20;
+
+	ret0x24:
+		call executeLuaHook;
+		ret 0x24;
+
+	ret0x28:
+		call executeLuaHook;
+		ret 0x28;
+
+	ret0x2C:
+		call executeLuaHook;
+		ret 0x2C;
 
 	retNone:
 		call executeLuaHook;

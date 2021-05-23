@@ -73,6 +73,9 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
 	luaL_setfuncs(L, printlib, 0);
 	lua_pop(L, 1);
 }
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect() {
+	return RPS_initializePrintRedirect(L);
+}
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string apiNamespace) {
 	if (apiNamespace == "_G" || apiNamespace == "global") {
@@ -91,8 +94,15 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string ap
 	}
 }
 
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(std::string apiNamespace) {
+	return RPS_initializeLuaAPI(L, apiNamespace);
+}
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L) {
 	return RPS_initializeLuaAPI(L, "global");
+}
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI() {
+	return RPS_initializeLuaAPI(L);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string packagePath) {
@@ -102,6 +112,9 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string pa
 	lua_settable(L, -3);
 	lua_pop(L, 1);
 }
+RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(std::string packagePath) {
+	return RPS_setupPackagePath(L, packagePath);
+}
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string packageCPath) {
 	lua_getglobal(L, "package");
@@ -109,6 +122,9 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string p
 	lua_pushstring(L, packageCPath.c_str());
 	lua_settable(L, -3);
 	lua_pop(L, 1);
+}
+RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(std::string packageCPath) {
+	return RPS_setupPackageCPath(L, packageCPath);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath) {
@@ -128,6 +144,10 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bo
 	}
 }
 
+RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(std::string bootstrapFilePath) {
+	return RPS_runBootstrapFile(L, bootstrapFilePath);
+}
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua() {
 	L = luaL_newstate();
 }
@@ -139,12 +159,20 @@ RUNTIMEPATCHINGSYSTEM_API bool RPS_initializeCodeHeap() {
 	return codeHeap != 0;
 }
 
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenLibs() {
+	luaL_openlibs(L);
+}
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenBase() {
+	luaopen_base(L);
+}
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, bool initializePrintRedirect) {
 	RPS_initializeLua();
 
 	RPS_initializeCodeHeap();
 
-	luaL_openlibs(L);
+	RPS_initializeLuaOpenLibs();
 
 	if (initializePrintRedirect) RPS_initializePrintRedirect(L);
 
@@ -205,6 +233,10 @@ RUNTIMEPATCHINGSYSTEM_API int RPS_getCurrentStackSize() {
 
 RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
 	return L;
+}
+
+RUNTIMEPATCHINGSYSTEM_API void RPS_setLuaState(lua_State* value) {
+	L = value;
 }
 
 
