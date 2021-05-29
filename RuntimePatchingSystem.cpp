@@ -133,7 +133,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bo
 	int r = luaL_dofile(L, bootstrapFilePath.c_str());
 
 	if (r == LUA_OK) {
-		std::cout << "[LUA]: loaded LUA API." << std::endl;
+		//std::cout << "[LUA]: loaded LUA API." << std::endl;
 
 		lua_pop(L, lua_gettop(L) - stackSize);
 	}
