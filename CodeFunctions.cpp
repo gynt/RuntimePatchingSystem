@@ -605,14 +605,16 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 				while (lua_next(L, -2) != 0) {
 					/* uses 'key' (at index -2) and 'value' (at index -1) */
 					if (!lua_isstring(L, -2)) {
-						lua_pushliteral(L, "The return value table must have string keys");
-						lua_error(L);
+						luaErrorLevel = 6;
+						luaErrorMsg = "The return value table must have string keys";
+						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
 					if (!lua_isinteger(L, -1)) {
-						lua_pushliteral(L, "The return value table must have integer values");
-						lua_error(L);
+						luaErrorLevel = 5;
+						luaErrorMsg = "The return value table must have integer values";
+						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
@@ -622,8 +624,9 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 
 					std::vector<std::string>::const_iterator it = find(order.begin(), order.end(), key);
 					if (it == order.end()) {
-						lua_pushstring(L, ("The key does not exist: " + key).c_str());
-						lua_error(L);
+						luaErrorLevel = 4;
+						luaErrorMsg = "The key does not exist: " + key;
+						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
@@ -640,8 +643,6 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 			else {
 				luaErrorLevel = 3;
 				luaErrorMsg = std::string(luaHookedFunctionName) + " is not a function";
-				lua_pushstring(L, luaErrorMsg.c_str());
-				lua_error(L);
 			}
 			lua_pop(L, 1); // pop off the return value;
 			currentDetourReturn = retLoc;
@@ -650,8 +651,6 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 		else {
 			luaErrorLevel = 1;
 			luaErrorMsg = lua_tostring(L, -1);
-			lua_pushstring(L, luaErrorMsg.c_str());
-			lua_error(L);
 			lua_pop(L, 1); // pop off the error message;
 		}
 	}
@@ -659,8 +658,6 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 		lua_pop(L, 1); // I think we need this pop, because the getglobal does a push that would otherwise be popped by pcall.
 		luaErrorLevel = 2;
 		luaErrorMsg = std::string(luaHookedFunctionName) + " is not a function";
-		lua_pushstring(L, luaErrorMsg.c_str());
-		lua_error(L);
 	}
 
 	std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
