@@ -221,13 +221,19 @@ int registerString(lua_State* L) {
 
 
 int luaAllocate(lua_State* L) {
-	if (lua_gettop(L) != 1) {
-		return luaL_error(L, "Wrong number of arguments passed");
+	if (lua_gettop(L) != 1 && lua_gettop(L) != 2) {
+		return luaL_error(L, "Expected one or two arguments");
 	}
 
-	int size = lua_tonumber(L, 1);
+	void* memory;
 
-	void* memory = malloc(size);
+	int size = lua_tonumber(L, 1);
+	if (lua_gettop(L) == 2 && lua_toboolean(L, 2)) {
+		memory = calloc(size, sizeof(BYTE));
+	}
+	else {
+		memory = malloc(size);
+	}
 
 	lua_pushinteger(L, (DWORD_PTR)memory);
 
