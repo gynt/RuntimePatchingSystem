@@ -82,11 +82,6 @@ public:
 		return DoCreateCallHook(this->address, (DWORD)LuaLandingFromCpp, this->hookSize, this->newOriginalFunctionLocation);
 	}
 
-	void setTableRef(lua_State* L) {
-		/** Pops a value from the stack and registers it in the registry. */
-		this->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
-
 	void setHookFunctionRef(lua_State* L) {
 		assert(this->luaTableRef != -1);
 
@@ -155,16 +150,34 @@ int luaExposeCode(lua_State* L) {
 	}
 
 	std::string luaOriginal = lua_tostring(L, 1);
+	if (luaOriginal.empty()) {
+		return luaL_error(L, "argument 1 must be a valid string");
+	}
+
 	DWORD address = lua_tointeger(L, 2);
+	if (address == 0) {
+		return luaL_error(L, "argument 2 must be a valid address");
+	}
+	
 	int argumentCount = lua_tointeger(L, 3);
+	
 	int callingConvention = lua_tointeger(L, 4);
+	if (callingConvention < 0 || callingConvention > 2) {
+		return luaL_error(L, "argument 4 must be a valid calling convention");
+	}
+
+	if (lua_gettop(L, 5)) {
+		if (!lua_istable(L, 5)) {
+			return luaL_error(L, "the 'env' argument should be a table");
+		}
+	}
 
 	if (argumentCount > RPS_ARGUMENT_LIMIT) {
 		return luaL_error(L, (std::string("too many arguments specified, max is ") + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
 	}
 
 	if (lua_gettop(L) == 5) {
-		if (!lua_istable(L, 5)) return luaL_error(L, "the 'env' argument should be a table");
+		
 		// a custom env was specified, push it again to make it at the top of the stack.
 		lua_pushvalue(L, 5);
 		
@@ -202,11 +215,37 @@ int luaHookCode(lua_State* L) {
 	}
 
 	std::string luaHook = lua_tostring(L, 1);
+	if (luaHook.empty()) {
+		return luaL_error(L, "argument 1 must be a valid string");
+	}
+
 	std::string luaOriginal = lua_tostring(L, 2);
+	if (luaOriginal.empty()) {
+		return luaL_error(L, "argument 2 must be a valid string");
+	}
+
 	DWORD address = lua_tointeger(L, 3);
+	if (address == 0) {
+		return luaL_error(L, "argument 3 must be a valid number");
+	}
+	
 	int argumentCount = lua_tointeger(L, 4);
+	
 	int callingConvention = lua_tointeger(L, 5);
+	if (callingConvention < 0 || callingConvention > 2) {
+		return luaL_error(L, "invalid calling convention");
+	}
+	
 	int hookSize = lua_tointeger(L, 6);
+	if (hookSize < 5) {
+		return luaL_error(L, "hook size must be at least 5");
+	}
+
+	if (lua_gettop(L) == 7) {
+		if (!lua_istable(L, 7)) {
+			return luaL_error(L, "env must be a table");
+		}
+	}
 
 	if (argumentCount > RPS_ARGUMENT_LIMIT) {
 		return luaL_error(L, ("too many arguments specified, max is " + std::to_string(RPS_ARGUMENT_LIMIT)  + ": " + std::to_string(argumentCount)).c_str());
@@ -223,7 +262,7 @@ int luaHookCode(lua_State* L) {
 		lua_pushvalue(L, 7);
 
 		// Pops off the table from the stack.
-		hookMapping[address]->setTableRef(L);
+		hookMapping[address]->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
 	}
 	else {
 		// assume the env is the global env
@@ -568,7 +607,13 @@ int luaDetourCode(lua_State* L) {
 	}
 
 	std::string luaOriginal = lua_tostring(L, 1);
+	if (luaOriginal.empty()) {
+		return luaL_error(L, "argument 1 must be a valid string");
+	}
 	DWORD address = lua_tointeger(L, 2);
+	if (address == 0) {
+		return luaL_error(L, "address = 0  is not a valid argument");
+	}
 	int hookSize = lua_tointeger(L, 3);
 
 	DWORD ret;
@@ -753,6 +798,9 @@ int luaWriteCode(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "address = 0 is an invalid argument");
+	}
 	if (!lua_istable(L, 2)) {
 		return luaL_error(L, "the second argument should be a table");
 	}
@@ -794,6 +842,9 @@ int luaAllocateRWE(lua_State* L) {
 	}
 
 	int size = lua_tonumber(L, 1);
+	if (size == 0) {
+		return luaL_error(L, "size = 0 is an invalid argument");
+	}
 
 	SYSTEM_INFO system_info;
 	GetSystemInfo(&system_info);
@@ -815,14 +866,27 @@ int luaScanForAOB(lua_State* L) {
 	DWORD min = 0;
 	DWORD max = 0x7FFFFFFF;
 
+	if (lua_isstring(L, 1) != 1) {
+		return luaL_error(L, "first argument needs to be a string");
+	}
+
 	if (lua_gettop(L) == 1) {
 
 	}
 	else if (lua_gettop(L) == 2) {
+		if (lua_isnumber(L, 2) != 1) {
+			return luaL_error(L, "second argument needs to be a number");
+		}
 		min = lua_tointeger(L, 2);
 	}
 	else if (lua_gettop(L) == 3) {
+		if (lua_isnumber(L, 2) != 1) {
+			return luaL_error(L, "second argument needs to be a number");
+		}
 		min = lua_tointeger(L, 2);
+		if (lua_isnumber(L, 3) != 1) {
+			return luaL_error(L, "third argument needs to be a number");
+		}
 		max = lua_tointeger(L, 3);
 	}
 	else {

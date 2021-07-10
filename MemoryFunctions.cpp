@@ -6,6 +6,9 @@ int luaReadByte(lua_State* L) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
 	lua_pushinteger(L, *((BYTE*)address));
 	return 1;
 }
@@ -15,6 +18,10 @@ int luaReadSmallInteger(lua_State* L) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	lua_pushinteger(L, *((SHORT*)address));
 	return 1;
 }
@@ -24,6 +31,10 @@ int luaReadInteger(lua_State* L) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	lua_pushinteger(L, *((int*)address));
 	return 1;
 }
@@ -37,6 +48,10 @@ int luaReadString(lua_State* L) {
 		return luaL_error(L, "too few arguments passed to readString");
 	}
 	address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	if (lua_gettop(L) == 2) {
 		maxLength = lua_tointeger(L, 2);
 	}
@@ -60,6 +75,10 @@ int luaReadBytes(lua_State* L) {
 	}
 
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	int size = lua_tointeger(L, 2);
 
 	lua_createtable(L, size, 0);
@@ -81,6 +100,10 @@ int luaWriteByte(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	BYTE value = lua_tointeger(L, 2);
 
 #ifdef _DEBUG
@@ -98,6 +121,10 @@ int luaWriteSmallInteger(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	SHORT value = lua_tointeger(L, 2);
 
 #ifdef _DEBUG
@@ -115,6 +142,10 @@ int luaWriteInteger(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	int value = lua_tointeger(L, 2);
 
 #ifdef _DEBUG
@@ -132,6 +163,10 @@ int luaWriteBytes(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
 	if (!lua_istable(L, 2)) {
 		return luaL_error(L, "the second argument should be a table");
 	}
@@ -184,8 +219,19 @@ int luaMemCpy(lua_State* L) {
 	}
 
 	DWORD dst = lua_tointeger(L, 1);
+	if (dst == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	
 	DWORD src = lua_tointeger(L, 2);
+	if (src == 0) {
+		return luaL_error(L, "argument 2 must be a valid address");
+	}
+
 	int size = lua_tointeger(L, 3);
+	if (size == 0) {
+		return luaL_error(L, "argument 3 must be a valid size higher than 0");
+	}
 
 #ifdef _DEBUG
 	if (!canWrite(dst, size)) {
@@ -209,7 +255,6 @@ int registerString(lua_State* L) {
 	}
 
 	std::string target = lua_tostring(L, 1);
-
 	std::pair<std::set<std::string>::iterator, bool> p = stringSet.insert(target);
 
 	std::set<std::string>::iterator it = p.first;
