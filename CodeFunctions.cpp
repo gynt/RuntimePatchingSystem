@@ -166,7 +166,7 @@ int luaExposeCode(lua_State* L) {
 		return luaL_error(L, "argument 4 must be a valid calling convention");
 	}
 
-	if (lua_gettop(L, 5)) {
+	if (lua_gettop(L) == 5) {
 		if (!lua_istable(L, 5)) {
 			return luaL_error(L, "the 'env' argument should be a table");
 		}
