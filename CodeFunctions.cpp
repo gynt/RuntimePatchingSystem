@@ -1,5 +1,7 @@
 #include "CodeFunctions.h"
 
+#define RPS_ARGUMENT_LIMIT 11
+
 void LuaLandingFromCpp();
 
 void detourLandingFunction();
@@ -118,8 +120,10 @@ public:
 		// Put the key on the top of the stack
 		lua_pushstring(L, this->luaOriginalFunctionName.c_str());
 
-		lua_pushinteger(L, this->address);
-		lua_pushcclosure(L, &luaCallMachineCode, 1);
+		lua_pushinteger(L, this->newOriginalFunctionLocation);
+		lua_pushinteger(L, this->argumentsCount);
+		lua_pushinteger(L, this->callingConvention);
+		lua_pushcclosure(L, &luaCallMachineCode, 3);
 
 		lua_settable(L, -3);
 		lua_pop(L, 1); // Pop the table
@@ -155,25 +159,36 @@ int luaExposeCode(lua_State* L) {
 	int argumentCount = lua_tointeger(L, 3);
 	int callingConvention = lua_tointeger(L, 4);
 
-	if (argumentCount > 11) {
-		return luaL_error(L, "too many arguments specified, max is 11: " + argumentCount);
+	if (argumentCount > RPS_ARGUMENT_LIMIT) {
+		return luaL_error(L, (std::string("too many arguments specified, max is ") + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
 	}
 
-	hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, 0, callingConvention, argumentCount, "", luaOriginal)));
-
 	if (lua_gettop(L) == 5) {
+		if (!lua_istable(L, 5)) return luaL_error(L, "the 'env' argument should be a table");
 		// a custom env was specified, push it again to make it at the top of the stack.
 		lua_pushvalue(L, 5);
-
-		// Pops off the table from the stack.
-		hookMapping[address]->setTableRef(L);
+		
+		//// Pops off the table from the stack.
+		//luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
 	}
 	else {
 		// assume the env is the global env
+		lua_pushglobaltable(L);
 	}
 
-	hookMapping[address]->newOriginalFunctionLocation = address;
-	hookMapping[address]->registerOriginalFunctionInLua(L);
+	// Put the key on the top of the stack
+	//lua_pushstring(L, luaOriginal.c_str());
+
+	//TODO: the argument Count has some bug...
+	int adjustedArgCount = argumentCount - (int)(callingConvention == 1);
+	lua_pushinteger(L, address); // set upvalue address
+	lua_pushinteger(L, adjustedArgCount); // set upvalue argument count, exclude `this`
+	lua_pushinteger(L, callingConvention); // set upvalue calling convention
+	lua_pushcclosure(L, &luaCallMachineCode, 3); // creates a closure with the upvalues
+
+	lua_setfield(L, -2, luaOriginal.c_str()); // store the closure with the right name.
+	//lua_settable(L, -3); // store the closure with the right name.
+	lua_pop(L, 1); // Pop the table
 
 	return 0;
 }
@@ -193,11 +208,16 @@ int luaHookCode(lua_State* L) {
 	int callingConvention = lua_tointeger(L, 5);
 	int hookSize = lua_tointeger(L, 6);
 
-	if (argumentCount > 11) {
-		return luaL_error(L, "too many arguments specified, max is 11: " + argumentCount);
+	if (argumentCount > RPS_ARGUMENT_LIMIT) {
+		return luaL_error(L, ("too many arguments specified, max is " + std::to_string(RPS_ARGUMENT_LIMIT)  + ": " + std::to_string(argumentCount)).c_str());
 	}
 
-	hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
+	std::pair<std::map<DWORD, std::shared_ptr<LuaHook>>::const_iterator, bool> hi = hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
+	
+	if (!hi.second) {
+		return luaL_error(L, "a hook already exists for function at: " + address);
+	}
+	
 	if (lua_gettop(L) == 7) {
 		// a custom env was specified, push it again to make it at the top of the stack.
 		lua_pushvalue(L, 7);
@@ -280,34 +300,36 @@ void __stdcall SetLuaHookedFunctionParameters(DWORD origin, DWORD liveECXValue) 
 
 }
 
-DWORD fakeStack[20];
+DWORD fakeStack[RPS_ARGUMENT_LIMIT + 1];
 
 // The user has called the luaOriginalFunctionName
 int luaCallMachineCode(lua_State* L) {
 	DWORD address = lua_tointeger(L, lua_upvalueindex(1)); //lua_upvalueindex(1)
+	int argumentCount = lua_tointeger(L, lua_upvalueindex(2));
+	int callingConvention = lua_tointeger(L, lua_upvalueindex(3));
 
-	SetLuaHookedFunctionParameters(address, 0);
+	//SetLuaHookedFunctionParameters(address, 0);
 
-	if (luaCallingConvention == 1) {
-		int totalArgCount = luaHookedFunctionArgCount + 1;  // ecx is passed as the first parameter
+	if (callingConvention == 1) {
+		int totalArgCount = argumentCount + 1;  // ecx is passed as the first parameter
 		if (lua_gettop(L) != totalArgCount) {
 			std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 			return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 		}
 
-		for (int i = 0; i < luaHookedFunctionArgCount; i++) {
+		for (int i = 0; i < argumentCount; i++) {
 			fakeStack[i] = lua_tointeger(L, i + 1 + 1); // i+1+1 (1 to offset 0-base and 1 because this-parameter is ignored
 		}
 
 		currentECXValue = lua_tointeger(L, 1); // this parameter
 	}
 	else {
-		if (lua_gettop(L) != luaHookedFunctionArgCount) { // + 0
+		if (lua_gettop(L) != argumentCount) { // + 0
 			std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
 			return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 		}
 
-		for (int i = 0; i < luaHookedFunctionArgCount; i++) {
+		for (int i = 0; i < argumentCount; i++) {
 			fakeStack[i] = lua_tointeger(L, i + 1); // i + 1 to offset the 0-base
 		}
 
@@ -315,7 +337,7 @@ int luaCallMachineCode(lua_State* L) {
 	}
 
 	__asm {
-		mov ecx, luaHookedFunctionArgCount;
+		mov ecx, argumentCount;
 	loopbegin:
 		cmp ecx, 0;
 		jle done;
@@ -324,13 +346,13 @@ int luaCallMachineCode(lua_State* L) {
 		push eax;
 		jmp loopbegin;
 	done:
-		mov ecx, luaCallingConvention;// FAIL! this parameter is not valid anymore at this point!
+		mov ecx, callingConvention;
 		cmp ecx, 0;
 		je caller;
 		jmp callee;
 	caller:
-		mov ecx, luaHookedFunctionArgCount;
-		mov eax, newOriginalFunctionLocation;
+		mov ecx, argumentCount;
+		mov eax, address;
 		cmp ecx, 0;
 		je add0x00;
 		cmp ecx, 1;
@@ -404,7 +426,7 @@ int luaCallMachineCode(lua_State* L) {
 		add esp, 0x2C;
 		jmp eor;
 	callee:
-		mov eax, newOriginalFunctionLocation;
+		mov eax, address;
 		mov ecx, currentECXValue;
 		call eax;
 	eor:
