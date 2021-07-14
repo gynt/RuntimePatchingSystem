@@ -13,9 +13,6 @@
 #include "UtilityFunctions.h"
 
 
-
-
-
 static int l_my_print(lua_State* L) {
 	int n = lua_gettop(L);  /* number of arguments */
 	int i;
@@ -35,9 +32,6 @@ static const struct luaL_Reg printlib[] = {
   {"print", l_my_print},
   {NULL, NULL} /* end of array */
 };
-
-
-
 
 const struct luaL_Reg RPS_LIB[] = {
 	{"hookCode", luaHookCode},
@@ -73,6 +67,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
 	luaL_setfuncs(L, printlib, 0);
 	lua_pop(L, 1);
 }
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect() {
 	return RPS_initializePrintRedirect(L);
 }
@@ -101,6 +96,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(std::string apiNamespace) {
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L) {
 	return RPS_initializeLuaAPI(L, "global");
 }
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI() {
 	return RPS_initializeLuaAPI(L);
 }
@@ -112,6 +108,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string pa
 	lua_settable(L, -3);
 	lua_pop(L, 1);
 }
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(std::string packagePath) {
 	return RPS_setupPackagePath(L, packagePath);
 }
@@ -123,6 +120,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string p
 	lua_settable(L, -3);
 	lua_pop(L, 1);
 }
+
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(std::string packageCPath) {
 	return RPS_setupPackageCPath(L, packageCPath);
 }
@@ -238,5 +236,3 @@ RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
 RUNTIMEPATCHINGSYSTEM_API void RPS_setLuaState(lua_State* value) {
 	L = value;
 }
-
-

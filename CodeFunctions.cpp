@@ -2,14 +2,30 @@
 
 #define RPS_ARGUMENT_LIMIT 11
 
+// forward declaration
 void LuaLandingFromCpp();
 
+// forward declaration
 void detourLandingFunction();
 
-int CALLING_CONV_CALLER = 0; //add esp, 4*argumentCount
-int CALLING_CONV_THISCALL = 1; //mov ecx, address
-int CALLING_CONV_STDCALL = 2; //special ret 0x, no this parameter
-//int CALLING_CONV_FASTCALL = 3; ?
+/**
+ * The currently supported calling conventions:
+ * 
+ */
+enum CallingConvention {
+	/**
+	 * Caller is responsible for stack cleanup.
+	 */
+	CALLER = 0,
+	/**
+	 * Callee is responsible for stack cleanup, `this` parameter given in ECX.
+	 */
+	THISCALL = 1,
+	/**
+	 * Callee is responsible for stack cleanup, no `this` parameter.
+	 */
+	STDCALL = 2,
+};
 
 HANDLE codeHeap = 0;
 
@@ -71,7 +87,7 @@ public:
 		this->address = addr;
 		this->hookSize = hookSize;
 		this->callingConvention = callingConv;
-		this->argumentsCount = argCount - (int)(callingConv == 1); // To keep it clear for the lua users...
+		this->argumentsCount = argCount - (int)(callingConv == CallingConvention::THISCALL); // To keep it clear for the lua users...
 		this->luaHookFunctionName = luaHook;
 		this->luaOriginalFunctionName = luaOriginal;
 		this->luaTableRef = -1;
@@ -140,155 +156,107 @@ std::string luaErrorMsg;
 int luaCallingConvention;
 DWORD currentECXValue;
 int luaHookedFunctionTableReference;
+int luaHookedFunctionReference;
 
-// lua calls this function as: exposeCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0)
-//  or lua calls this function as: exposeCode(luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, env = table)
+
+// exposeCode(address, argumentCount, callingConvention)
 int luaExposeCode(lua_State* L) {
 
-	if (lua_gettop(L) < 4 || lua_gettop(L) > 5) {
-		return luaL_error(L, "expecting exactly 4 or 5 arguments");
+	if (lua_gettop(L) != 3) {
+		return luaL_error(L, "invalid number of arguments");
 	}
 
-	std::string luaOriginal = lua_tostring(L, 1);
-	if (luaOriginal.empty()) {
-		return luaL_error(L, "argument 1 must be a valid string");
-	}
-
-	DWORD address = lua_tointeger(L, 2);
+	DWORD address = lua_tointeger(L, 1);
 	if (address == 0) {
-		return luaL_error(L, "argument 2 must be a valid address");
+		return luaL_error(L, "argument 1 must be a valid address");
 	}
 	
-	int argumentCount = lua_tointeger(L, 3);
+	int argumentCount = lua_tointeger(L, 2);
 	
-	int callingConvention = lua_tointeger(L, 4);
-	if (callingConvention < 0 || callingConvention > 2) {
-		return luaL_error(L, "argument 4 must be a valid calling convention");
-	}
-
-	if (lua_gettop(L) == 5) {
-		if (!lua_istable(L, 5)) {
-			return luaL_error(L, "the 'env' argument should be a table");
-		}
+	int callingConvention = lua_tointeger(L, 3);
+	if (callingConvention < CallingConvention::CALLER || callingConvention > CallingConvention::THISCALL) {
+		return luaL_error(L, "argument 3 must be a valid calling convention");
 	}
 
 	if (argumentCount > RPS_ARGUMENT_LIMIT) {
 		return luaL_error(L, (std::string("too many arguments specified, max is ") + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
 	}
 
-	if (lua_gettop(L) == 5) {
-		
-		// a custom env was specified, push it again to make it at the top of the stack.
-		lua_pushvalue(L, 5);
-		
-		//// Pops off the table from the stack.
-		//luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
-	else {
-		// assume the env is the global env
-		lua_pushglobaltable(L);
-	}
-
-	// Put the key on the top of the stack
-	//lua_pushstring(L, luaOriginal.c_str());
-
-	//TODO: the argument Count has some bug...
-	int adjustedArgCount = argumentCount - (int)(callingConvention == 1);
+	int adjustedArgCount = argumentCount - (int)(callingConvention == CallingConvention::THISCALL);
 	lua_pushinteger(L, address); // set upvalue address
 	lua_pushinteger(L, adjustedArgCount); // set upvalue argument count, exclude `this`
 	lua_pushinteger(L, callingConvention); // set upvalue calling convention
 	lua_pushcclosure(L, &luaCallMachineCode, 3); // creates a closure with the upvalues
 
-	lua_setfield(L, -2, luaOriginal.c_str()); // store the closure with the right name.
-	//lua_settable(L, -3); // store the closure with the right name.
-	lua_pop(L, 1); // Pop the table
-
-	return 0;
-}
-
-// lua calls this function as: hookCode(luaHook = "callbackTest", luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, hookSize = 5)
-// or as: hookCode(luaHook = "callbackTest", luaOriginal = "callback", address = 0xDEADBEEF, argumentCount = 3, callingConvention = 0, hookSize = 5, env)
-int luaHookCode(lua_State* L) {
-
-	if (lua_gettop(L) < 6 || lua_gettop(L) > 7) {
-		return luaL_error(L, "expecting exactly 6 or 7 arguments");
-	}
-
-	std::string luaHook = lua_tostring(L, 1);
-	if (luaHook.empty()) {
-		return luaL_error(L, "argument 1 must be a valid string");
-	}
-
-	std::string luaOriginal = lua_tostring(L, 2);
-	if (luaOriginal.empty()) {
-		return luaL_error(L, "argument 2 must be a valid string");
-	}
-
-	DWORD address = lua_tointeger(L, 3);
-	if (address == 0) {
-		return luaL_error(L, "argument 3 must be a valid number");
-	}
-	
-	int argumentCount = lua_tointeger(L, 4);
-	
-	int callingConvention = lua_tointeger(L, 5);
-	if (callingConvention < 0 || callingConvention > 2) {
-		return luaL_error(L, "invalid calling convention");
-	}
-	
-	int hookSize = lua_tointeger(L, 6);
-	if (hookSize < 5) {
-		return luaL_error(L, "hook size must be at least 5");
-	}
-
-	if (lua_gettop(L) == 7) {
-		if (!lua_istable(L, 7)) {
-			return luaL_error(L, "env must be a table");
-		}
-	}
-
-	if (argumentCount > RPS_ARGUMENT_LIMIT) {
-		return luaL_error(L, ("too many arguments specified, max is " + std::to_string(RPS_ARGUMENT_LIMIT)  + ": " + std::to_string(argumentCount)).c_str());
-	}
-
-	std::pair<std::map<DWORD, std::shared_ptr<LuaHook>>::const_iterator, bool> hi = hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, luaHook, luaOriginal)));
-	
-	if (!hi.second) {
-		return luaL_error(L, "a hook already exists for function at: " + address);
-	}
-	
-	if (lua_gettop(L) == 7) {
-		// a custom env was specified, push it again to make it at the top of the stack.
-		lua_pushvalue(L, 7);
-
-		// Pops off the table from the stack.
-		hookMapping[address]->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
-	else {
-		// assume the env is the global env
-
-	}
-	hookMapping[address]->CreateCallHook();
-	hookMapping[address]->registerOriginalFunctionInLua(L);
-
+	// return the function
 	return 1;
 }
 
 
+// hookCode(luaHook, address, argumentCount, callingConvention, hookSize)
+int luaHookCode(lua_State* L) {
+	if (lua_gettop(L) != 5) {
+		return luaL_error(L, "expecting 5 arguments");
+	}
+
+	if (!lua_isfunction(L, 1)) {
+		return luaL_error(L, "argument 1 must be a function");
+	}
+
+	DWORD address = lua_tointeger(L, 2);
+	if (address == 0) {
+		return luaL_error(L, "argument 2 must be a valid number");
+	}
+
+	int argumentCount = lua_tointeger(L, 3);
+
+	int callingConvention = lua_tointeger(L, 4);
+	if (callingConvention < 0 || callingConvention > 2) {
+		return luaL_error(L, "invalid calling convention");
+	}
+
+	int hookSize = lua_tointeger(L, 5);
+	if (hookSize < 5) {
+		return luaL_error(L, "argument 5, the hook size, must be a least 5");
+	}
+
+	if (argumentCount > RPS_ARGUMENT_LIMIT) {
+		return luaL_error(L, ("too many arguments specified, max is " + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
+	}
+
+	std::pair<std::map<DWORD, std::shared_ptr<LuaHook>>::const_iterator, bool> hi = hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, "", "")));
+
+	if (!hi.second) {
+		return luaL_error(L, "a hook already exists for function at: " + address);
+	}
+
+	// Store a reference to the hook function that is to be called later.
+	lua_pushvalue(L, 1);
+	hookMapping[address]->luaHookFunctionRef = luaL_ref(L, LUA_REGISTRYINDEX);
+
+	hookMapping[address]->CreateCallHook();
+
+	lua_pushinteger(L, hookMapping[address]->newOriginalFunctionLocation);
+	lua_pushinteger(L, hookMapping[address]->argumentsCount);
+	lua_pushinteger(L, hookMapping[address]->callingConvention);
+	lua_pushcclosure(L, &luaCallMachineCode, 3);
+
+	// return the function
+	return 1;
+}
+
 DWORD __stdcall executeLuaHook(unsigned long* args) {
 
-	if (luaHookedFunctionTableReference == -1) {
-		lua_getglobal(L, luaHookedFunctionName);
+	if (luaHookedFunctionReference == -1) {
+		std::cout << "[LUA_API]: invalid lua reference to hook function: " << luaHookedFunctionName << std::endl;
+		return 0;
 	}
-	else {
-		lua_rawgeti(L, LUA_REGISTRYINDEX, luaHookedFunctionTableReference);
-		lua_getfield(L, -1, luaHookedFunctionName);
-		lua_remove(L, lua_absindex(L, -2)); // remove the table
-	}
+
+	lua_rawgeti(L, LUA_REGISTRYINDEX, luaHookedFunctionReference);
 
 	if (lua_isfunction(L, -1)) {
 		int totalArgCount = luaHookedFunctionArgCount;
-		if (luaCallingConvention == 1) {
+		if (luaCallingConvention == CallingConvention::THISCALL) {
 			lua_pushnumber(L, currentECXValue);
 			totalArgCount += 1;
 		}
@@ -309,7 +277,7 @@ DWORD __stdcall executeLuaHook(unsigned long* args) {
 		}
 	}
 	else {
-		lua_pop(L, 1); // I think we need this pop, because the getglobal does a push that would otherwise be popped by pcall.
+		lua_pop(L, 1); // we need this pop, because the getglobal does a push that would otherwise be popped by pcall.
 		luaErrorLevel = 2;
 		luaErrorMsg = std::string(luaHookedFunctionName) + " is not a function";
 	}
@@ -332,6 +300,7 @@ void __stdcall SetLuaHookedFunctionParameters(DWORD origin, DWORD liveECXValue) 
 		functionLocation = value->address;
 		currentECXValue = liveECXValue;
 		luaHookedFunctionTableReference = value->luaTableRef;
+		luaHookedFunctionReference = value->luaHookFunctionRef;
 	}
 	else {
 
@@ -343,13 +312,11 @@ DWORD fakeStack[RPS_ARGUMENT_LIMIT + 1];
 
 // The user has called the luaOriginalFunctionName
 int luaCallMachineCode(lua_State* L) {
-	DWORD address = lua_tointeger(L, lua_upvalueindex(1)); //lua_upvalueindex(1)
+	DWORD address = lua_tointeger(L, lua_upvalueindex(1));
 	int argumentCount = lua_tointeger(L, lua_upvalueindex(2));
 	int callingConvention = lua_tointeger(L, lua_upvalueindex(3));
 
-	//SetLuaHookedFunctionParameters(address, 0);
-
-	if (callingConvention == 1) {
+	if (callingConvention == CallingConvention::THISCALL) {
 		int totalArgCount = argumentCount + 1;  // ecx is passed as the first parameter
 		if (lua_gettop(L) != totalArgCount) {
 			std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
@@ -583,14 +550,17 @@ void __declspec(naked) LuaLandingFromCpp() {
 
 class LuaDetour {
 public:
+	DWORD address;
 	std::string luaDetourFunctionName;
 	DWORD detourReturnLocation;
 	int luaTableRef;
+	int luaFunctionRef;
 
-	LuaDetour(std::string luaDetourFunctionName, DWORD detourReturnLocation) {
-		this->luaDetourFunctionName = luaDetourFunctionName;
+	LuaDetour(DWORD address, DWORD detourReturnLocation) {
+		this->address = address;
 		this->detourReturnLocation = detourReturnLocation;
 		this->luaTableRef = -1;
+		this->luaFunctionRef = -1;
 	}
 };
 
@@ -599,17 +569,17 @@ DWORD currentDetourSource;
 DWORD currentDetourReturn;
 std::string currentDetourTarget;
 
-// lua calls this as: detourCode(hookedFunctionName, address, hookSize)
-// or as: detourCode(hookedFunctionName, address, hookSize, env)
+
+// detourCode(hookedFunction, address, hookSize)
 int luaDetourCode(lua_State* L) {
-	if (lua_gettop(L) < 3 || lua_gettop(L) > 4) {
-		return luaL_error(L, "expecting exactly 3 or 4 arguments");
+	if (lua_gettop(L) < 3) {
+		return luaL_error(L, "expecting exactly 3 arguments");
 	}
 
-	std::string luaOriginal = lua_tostring(L, 1);
-	if (luaOriginal.empty()) {
-		return luaL_error(L, "argument 1 must be a valid string");
+	if (!lua_isfunction(L, 1)) {
+		return luaL_error(L, "argument 1 must be a function");
 	}
+
 	DWORD address = lua_tointeger(L, 2);
 	if (address == 0) {
 		return luaL_error(L, "address = 0  is not a valid argument");
@@ -619,16 +589,15 @@ int luaDetourCode(lua_State* L) {
 	DWORD ret;
 	DoCreateCallHook(address, (DWORD)detourLandingFunction, hookSize, ret);
 
-	detourTargetMap[address] = std::make_shared<LuaDetour>(luaOriginal, ret);
+	lua_pushvalue(L, 1);
+	int luaFunctionRef = luaL_ref(L, LUA_REGISTRYINDEX);
 
-	if (lua_gettop(L) == 4) {
-		// push the env on top of the stack again.
-		lua_pushvalue(L, 4);
-		detourTargetMap[address]->luaTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
+	std::pair<std::map<DWORD, std::shared_ptr<LuaDetour>>::const_iterator, bool> hi = detourTargetMap.insert(std::pair<DWORD, std::shared_ptr<LuaDetour>>(address, std::make_shared<LuaDetour>(address, ret)));
+	if (!hi.second) {
+		return luaL_error(L, ("detour already exists at this address: " + std::to_string(address)).c_str());
 	}
-	else {
-		// assume the global namespace.
-	}
+	
+	detourTargetMap[address]->luaFunctionRef = luaFunctionRef;
 
 	return 0;
 }
@@ -644,14 +613,12 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 
 	const std::vector<std::string> order = { "EDI", "ESI", "EBP", "ESP", "EBX", "EDX", "ECX", "EAX" };
 
-	if (entry->luaTableRef == -1) {
-		lua_getglobal(L, entry->luaDetourFunctionName.c_str());
+	if (entry->luaFunctionRef == -1) {
+		std::cout << "[LUA API]: " << "invalid detour lua function";
+		return;
 	}
-	else {
-		lua_rawgeti(L, LUA_REGISTRYINDEX, entry->luaTableRef);
-		lua_getfield(L, -1, entry->luaDetourFunctionName.c_str());
-		lua_remove(L, lua_absindex(L, -2)); // remove the table
-	}
+
+	lua_rawgeti(L, LUA_REGISTRYINDEX, entry->luaFunctionRef);
 
 	if (lua_isfunction(L, -1)) {
 		lua_createtable(L, 0, 8);
@@ -760,8 +727,6 @@ void __declspec(naked) detourLandingFunction() {
 
 int convertTableToByteStream(lua_State* L, std::stringstream* s) {
 	int i = 0;
-
-	//lua_pushvalue(L, 2); // push the table again; so that it is at -1
 
 	/* table is in the stack at index 't' */
 	lua_pushnil(L);  /* first key */

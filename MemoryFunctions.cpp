@@ -207,8 +207,6 @@ int luaWriteBytes(lua_State* L) {
 
 	lua_pop(L, 1); //removes 'table'
 
-	// TODO: more popping?
-
 	return 0;
 }
 

@@ -1,3 +1,18 @@
+/*******************************************************************
+ * \file   RuntimePatchingSystem.h
+ * \brief  Documentation for the API functions
+ * 
+ * \author gynt
+ * \date   July 2021
+ *********************************************************************/
+
+/**
+ * @mainpage Runtime Patching System overview.
+ * 
+ * @section Overview
+ */
+
+
 #pragma once
 
 #ifdef RUNTIMEPATCHINGLIBRARY_EXPORTS
@@ -10,7 +25,8 @@
 #include <string>
 
 /**
- * Initialize a lua state and run the bootstrap file. The lua RPS functions are put in the global namespace. Sets up redirection of `print` output to `std::cout`
+ * Initializes a lua environment. Registers RPS lua functions in that environment.
+ * @param bootstrapFilePath path of the bootstrap lua file.
  */
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath);
 
@@ -48,7 +64,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenBase();
 
 /**
  * Registers the lua api in the given namespace. A table with the functions with the given name is created in the global namespace
- * \param apiNamespace if NULL or empty, the table is left on the lua stack. If "global" the functions are registered in the global namespace.
+ * @param apiNamespace if NULL or empty, the table is left on the lua stack. If "global" the functions are registered in the global namespace.
  */
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string apiNamespace);
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(std::string apiNamespace);
