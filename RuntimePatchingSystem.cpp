@@ -137,7 +137,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bo
 	}
 	else {
 		std::string errormsg = lua_tostring(L, -1);
-		std::cout << "[LUA]: failed to load LUA API: " << errormsg << std::endl;
+		std::cout << "[RPS]: failed to execute lua file: " << errormsg << std::endl;
 		lua_pop(L, 1); // pop off the error message;
 	}
 }
@@ -220,7 +220,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
 	}
 	else {
 		std::string errormsg = lua_tostring(L, -1);
-		std::cout << "[LUA]: " << errormsg << std::endl;
+		std::cout << "[RPS]: error in lua snippet: " << errormsg << std::endl;
 		lua_pop(L, 1); // pop off the error message;
 	}
 }

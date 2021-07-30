@@ -247,8 +247,10 @@ int luaHookCode(lua_State* L) {
 
 DWORD __stdcall executeLuaHook(unsigned long* args) {
 
+	DWORD fl = functionLocation;
+
 	if (luaHookedFunctionReference == -1) {
-		std::cout << "[LUA_API]: invalid lua reference to hook function: " << luaHookedFunctionName << std::endl;
+		std::cout << "[LUA_API]: invalid lua reference to hook function: " << luaHookedFunctionName << " at: " << std::hex << fl << std::endl;
 		return 0;
 	}
 
@@ -282,7 +284,7 @@ DWORD __stdcall executeLuaHook(unsigned long* args) {
 		luaErrorMsg = std::string(luaHookedFunctionName) + " is not a function";
 	}
 
-	std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
+	std::cout << "[RPS]: error in lua callback function from " << std::hex << fl << " :" << std::string(luaErrorMsg) << std::endl;
 	return 0;
 }
 
@@ -319,8 +321,8 @@ int luaCallMachineCode(lua_State* L) {
 	if (callingConvention == CallingConvention::THISCALL) {
 		int totalArgCount = argumentCount + 1;  // ecx is passed as the first parameter
 		if (lua_gettop(L) != totalArgCount) {
-			std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
-			return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
+			//std::cout << "[RPS]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
+			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
@@ -331,8 +333,8 @@ int luaCallMachineCode(lua_State* L) {
 	}
 	else {
 		if (lua_gettop(L) != argumentCount) { // + 0
-			std::cout << "[LUA API]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
-			return luaL_error(L, ("[LUA API]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
+			//std::cout << "[RPS]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
+			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
@@ -614,7 +616,7 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 	const std::vector<std::string> order = { "EDI", "ESI", "EBP", "ESP", "EBX", "EDX", "ECX", "EAX" };
 
 	if (entry->luaFunctionRef == -1) {
-		std::cout << "[LUA API]: " << "invalid detour lua function";
+		std::cout << "[RPS]: " << "invalid detour lua function";
 		return;
 	}
 
@@ -641,14 +643,14 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 					if (!lua_isstring(L, -2)) {
 						luaErrorLevel = 6;
 						luaErrorMsg = "The return value table must have string keys";
-						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
+						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
 					if (!lua_isinteger(L, -1)) {
 						luaErrorLevel = 5;
 						luaErrorMsg = "The return value table must have integer values";
-						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
+						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
@@ -660,7 +662,7 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 					if (it == order.end()) {
 						luaErrorLevel = 4;
 						luaErrorMsg = "The key does not exist: " + key;
-						std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
+						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
 						return;
 					}
@@ -694,7 +696,7 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 		luaErrorMsg = std::string(entry->luaDetourFunctionName.c_str()) + " is not a function";
 	}
 
-	std::cout << "[LUA API]: " << std::string(luaErrorMsg) << std::endl;
+	std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 	currentDetourReturn = retLoc;
 }
 
