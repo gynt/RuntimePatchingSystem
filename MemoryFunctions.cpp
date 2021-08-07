@@ -95,6 +95,28 @@ int luaReadBytes(lua_State* L) {
 	return 1;
 }
 
+int luaWriteString(lua_State* L) {
+	if (lua_gettop(L) != 2) {
+		return luaL_error(L, "expected exactly 2 arguments");
+	}
+	DWORD address = lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
+	std::string value = lua_tostring(L, 2);
+
+#ifdef _DEBUG
+	if (!canWrite(address, value.size())) {
+		return luaL_error(L, ("cannot write " + std::to_string(1) + " string to location: " + std::to_string(address)).c_str());
+	}
+#endif
+
+	memcpy((void*)address, value.c_str(), value.size());
+	
+	return 0;
+}
+
 int luaWriteByte(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
