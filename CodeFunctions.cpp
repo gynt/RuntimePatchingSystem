@@ -1,3 +1,4 @@
+#include <regex>
 #include "CodeFunctions.h"
 
 #define RPS_ARGUMENT_LIMIT 11
@@ -865,6 +866,12 @@ int luaScanForAOB(lua_State* L) {
 	}
 
 	std::string query = lua_tostring(L, 1);
+
+
+	std::regex full_target("(([A-Fa-f0-9]{2})|([?]+)| )+");
+	if (!std::regex_match(query, full_target)) {
+		return luaL_error(L, "Invalid format, only spaces, 0-9, A-F, and ? are allowed");
+	}
 
 	DWORD address = AOB::FindInRange(query, min, max);
 
