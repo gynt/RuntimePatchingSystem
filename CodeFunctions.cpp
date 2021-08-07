@@ -837,6 +837,10 @@ int luaScanForAOB(lua_State* L) {
 		return luaL_error(L, "first argument needs to be a string");
 	}
 
+	if (std::string(lua_tostring(L, 1)).length() < 2) {
+		return luaL_error(L, "first argument is too short, minimum length is 2");
+	}
+
 	if (lua_gettop(L) == 1) {
 
 	}
