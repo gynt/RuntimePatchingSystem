@@ -628,7 +628,12 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 
 		for (int i = 0; i < order.size(); i++) {
 			lua_pushstring(L, order[i].c_str());
-			lua_pushinteger(L, registers[i]);
+			if (order[i].c_str() == "ESP") {
+				lua_pushinteger(L, registers[i]-8);
+			}
+			else {
+				lua_pushinteger(L, registers[i]);
+			}
 			lua_settable(L, -3);  /* 3rd element from the stack top */
 		}
 
@@ -669,7 +674,14 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 					}
 
 					int index = it - order.begin();
-					registers[index] = value;
+					if (key == "ESP") {
+						// Either do +8 because we gave it to lua with a -8 offset, or ignore the value and make it a readonly thing.
+						// registers[index] = value+8;
+					}
+					else {
+						registers[index] = value;
+					}
+					
 
 					/* removes 'value'; keeps 'key' for next iteration */
 					lua_pop(L, 1);
