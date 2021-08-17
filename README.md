@@ -70,7 +70,7 @@ end
 
 ### Detour code
 Redirects program flow to a Lua function. Note that the memory that is overwritten to jump to Lua is executed after the Lua callback function.
-The function that is called receives one parameter which is a table of all 8 x86 registers. This table should always be returned by the Lua function.
+The function that is called receives one parameter which is a table of all 8 x86 registers. These registers can be written to, except for ESP. This table should always be returned by the Lua function.
 ```
 detourCode(...)
 Parameters:
