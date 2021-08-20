@@ -1,7 +1,7 @@
 #pragma once
 
 namespace AOB {
-	int Scan(char* content, char* mask, DWORD min, DWORD max);
+	DWORD Scan(char* content, char* mask, DWORD min, DWORD max);
 
 	//Consider: https://github.com/CvX/hadesmem
 	DWORD FindPattern(DWORD dwAddress, DWORD dwLen, BYTE* bMask, char* szMask);
