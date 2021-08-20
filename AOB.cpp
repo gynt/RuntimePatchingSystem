@@ -52,7 +52,7 @@ namespace AOB {
 		return bytes;
 	}
 
-	int Scan(char* content, char* mask, DWORD min, DWORD max)
+	DWORD Scan(char* content, char* mask, DWORD min, DWORD max)
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
@@ -68,7 +68,7 @@ namespace AOB {
 			if (mi.State != MEM_COMMIT) continue;
 			if ((mi.Type == MEM_MAPPED) || (mi.Type == MEM_PRIVATE)) continue;
 			if ((mi.Protect & PAGE_NOACCESS)) continue;
-			int addr = FindPattern(lpAddr, si.dwPageSize, (BYTE*)content, mask);
+			DWORD addr = FindPattern(lpAddr, si.dwPageSize, (BYTE*)content, mask);
 			if (addr != 0)
 			{
 				return addr;
