@@ -198,26 +198,18 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
 	int r = luaL_dostring(L, code.c_str());
 	if (r == LUA_OK) {
 		int after = lua_gettop(L);
-		for (int i = before; i < after; i++) {
-			int index = before - (i + 1);
-			if (lua_isstring(L, index)) {
-				std::cout << lua_tostring(L, index) << std::endl;
+		if (after - before > 0) {
+			for (int i = before; i < after; i++) {  /* for each argument */
+				size_t l;
+				const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
+				if (i > 1)  /* not the first element? */
+					lua_writestring("\t", 1);  /* add a tab before it */
+				lua_writestring(s, l);  /* print it */
+				lua_pop(L, 1);  /* pop result */
 			}
-			else if (lua_isnumber(L, index)) {
-				std::cout << lua_tonumber(L, index) << std::endl;
-			}
-			else if (lua_isboolean(L, index)) {
-				std::cout << lua_toboolean(L, index) << std::endl;
-			}
-			else if (lua_isnil(L, index)) {
-				std::cout << "nil" << std::endl;
-			}
-			else {
-				std::cout << "[object]" << std::endl;
-			}
+			lua_writeline();
 		}
 		lua_pop(L, after - before);
-
 	}
 	else {
 		std::string errormsg = lua_tostring(L, -1);
