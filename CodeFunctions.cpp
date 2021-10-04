@@ -112,7 +112,7 @@ public:
 		lua_gettable(L, -2);
 
 		if (lua_isfunction(L, -1)) {
-			this->luaHookFunctionRef = luaL_ref(L, -1);
+			this->luaHookFunctionRef = luaL_ref(L, LUA_REGISTRYINDEX); //or -1?
 		}
 		else {
 			throw "cannot set hookfunctionref because there is no function with the name: " + this->luaHookFunctionName;
