@@ -137,9 +137,16 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bo
 		lua_pop(L, lua_gettop(L) - stackSize);
 	}
 	else {
-		std::string errormsg = lua_tostring(L, -1);
-		std::cout << "[RPS]: failed to execute lua file: " << errormsg << std::endl;
-		lua_pop(L, 1); // pop off the error message;
+		size_t length;
+		const char* errormsg = lua_tolstring(L, -1, &length);
+		if (errormsg != NULL) {
+			std::cout << "[RPS]: failed to execute lua file: " << errormsg << std::endl;
+			lua_pop(L, 1); // pop off the error message;
+		}
+		else {
+			std::cout << "[RPS]: failed to execute lua file: lua error code: " << r << std::endl;
+		}
+
 	}
 }
 
