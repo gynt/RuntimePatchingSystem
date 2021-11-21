@@ -10,16 +10,6 @@
 
 namespace AOB {
 
-	HANDLE hProcess = 0;
-	DWORD pid = 0;
-
-	BYTE* ReadMemoryAddress(DWORD address)
-	{
-		static char buffer[1024];
-		memcpy(buffer, (void*)address, sizeof(buffer));
-		return reinterpret_cast<BYTE*> (buffer);
-	}
-
 	bool bCompare(const BYTE* pData, const BYTE* bMask, const char* szMask)
 	{
 		for (; *szMask; ++szMask, ++pData, ++bMask)
@@ -56,22 +46,32 @@ namespace AOB {
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
-		MEMORY_BASIC_INFORMATION mi;
-		for (DWORD lpAddr = min; lpAddr < max; lpAddr += si.dwPageSize)
-		{
-			//if (lpAddr > 0x59dfff) {
-			//	//Anything beyond this address is not of interest?
-			//	return 0;
-			//}
-			SIZE_T vq = VirtualQuery((void*)lpAddr, &mi, si.dwPageSize);
-			if (vq == ERROR_INVALID_PARAMETER || vq == 0) break;
-			if (mi.State != MEM_COMMIT) continue;
-			if ((mi.Type == MEM_MAPPED) || (mi.Type == MEM_PRIVATE)) continue;
-			if ((mi.Protect & PAGE_NOACCESS)) continue;
-			DWORD addr = FindPattern(lpAddr, si.dwPageSize, (BYTE*)content, mask);
-			if (addr != 0)
-			{
-				return addr;
+		_MEMORY_BASIC_INFORMATION32 mbi;
+		DWORD address = min;
+		int remainder = 0;
+		
+		while (VirtualQuery((LPCVOID) address, ((MEMORY_BASIC_INFORMATION*)&mbi), sizeof(MEMORY_BASIC_INFORMATION)) != 0) {
+			if (mbi.State == MEM_COMMIT) {
+				if ((mbi.Type != MEM_MAPPED) && (mbi.Type != MEM_PRIVATE)) {
+					if ((mbi.Protect & PAGE_NOACCESS) == 0) {
+						// address = 0x401002
+						// mbi.BaseAddress = 0x401000
+						DWORD needle = FindPattern(address, mbi.RegionSize, (BYTE*)content, mask);
+						if (needle == 0) {
+							// address = 0x401000
+							address = mbi.BaseAddress;
+						}
+						else {
+							return needle;
+						}
+					}
+				}
+			}
+			
+			// address = 0x59E000
+			address += mbi.RegionSize;
+			if (address > max) {
+				return 0;
 			}
 		}
 		return 0;
@@ -107,6 +107,6 @@ namespace AOB {
 	// example: Find("57 E8 7B C0 10 ?")
 	DWORD Find(std::string ucp_aob_spec)
 	{
-		return FindInRange(ucp_aob_spec, 0x400000, 0x7FFFFFFF);
+		return FindInRange(ucp_aob_spec, 0x400000, 0x59E000-1);
 	}
 }
