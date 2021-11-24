@@ -107,6 +107,6 @@ namespace AOB {
 	// example: Find("57 E8 7B C0 10 ?")
 	DWORD Find(std::string ucp_aob_spec)
 	{
-		return FindInRange(ucp_aob_spec, 0x400000, 0x59E000-1);
+		return FindInRange(ucp_aob_spec, 0x400000, 0x7FFFFFFF);
 	}
 }
