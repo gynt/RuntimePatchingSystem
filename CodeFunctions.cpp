@@ -1,4 +1,3 @@
-#include <regex>
 #include "CodeFunctions.h"
 
 #define RPS_ARGUMENT_LIMIT 11
@@ -840,7 +839,39 @@ int luaAllocateRWE(lua_State* L) {
 	return 1;
 }
 
+bool validateAOBQuery(const char* query) {
+	size_t len = strlen(query);
+	for (int i = 0; i < len; i++) {
+		const char c = query[i];
+		if (c < '0') {
+			if (c != ' ') {
+				return false;
+			}
+		}
+		else if (c > '9') {
+			if (c < 'A') {
+				if (c != '?') {
+					return false;
+				}
+			}
+			else if (c > 'F') {
+				if (c < 'a') {
+					return false;
+				}
+				else if (c > 'f') {
+					return false;
+				}
+			}
+			else {
 
+			}
+		}
+		else {
+			
+		}
+	}
+	return true;
+}
 
 int luaScanForAOB(lua_State* L) {
 	DWORD min = 0;
@@ -879,9 +910,7 @@ int luaScanForAOB(lua_State* L) {
 
 	std::string query = lua_tostring(L, 1);
 
-
-	std::regex full_target("(([A-Fa-f0-9]{2})|([?]+)| )+");
-	if (!std::regex_match(query, full_target)) {
+	if (!validateAOBQuery(query.c_str())) {
 		return luaL_error(L, "Invalid format, only spaces, 0-9, A-F, and ? are allowed");
 	}
 
