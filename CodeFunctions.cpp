@@ -1,6 +1,6 @@
 #include "CodeFunctions.h"
 
-#define RPS_ARGUMENT_LIMIT 11
+#define RPS_ARGUMENT_LIMIT 20
 
 // forward declaration
 void LuaLandingFromCpp();
@@ -385,6 +385,24 @@ int luaCallMachineCode(lua_State* L) {
 		je add0x28;
 		cmp ecx, 11;
 		je add0x2C;
+		cmp ecx, 12;
+		je add0x30;
+		cmp ecx, 13;
+		je add0x34;
+		cmp ecx, 14;
+		je add0x38;
+		cmp ecx, 15;
+		je add0x3C;
+		cmp ecx, 16;
+		je add0x40;
+		cmp ecx, 17;
+		je add0x44;
+		cmp ecx, 18;
+		je add0x48;
+		cmp ecx, 19;
+		je add0x4C;
+		cmp ecx, 20;
+		je add0x50;
 	add0x00:
 		call eax;
 		add esp, 0x00;
@@ -432,6 +450,42 @@ int luaCallMachineCode(lua_State* L) {
 	add0x2C:
 		call eax;
 		add esp, 0x2C;
+		jmp eor;
+	add0x30:
+		call eax;
+		add esp, 0x30;
+		jmp eor;
+	add0x34:
+		call eax;
+		add esp, 0x34;
+		jmp eor;
+	add0x38:
+		call eax;
+		add esp, 0x38;
+		jmp eor;
+	add0x3C:
+		call eax;
+		add esp, 0x3C;
+		jmp eor;
+	add0x40:
+		call eax;
+		add esp, 0x40;
+		jmp eor;
+	add0x44:
+		call eax;
+		add esp, 0x44;
+		jmp eor;
+	add0x48:
+		call eax;
+		add esp, 0x48;
+		jmp eor;
+	add0x4C:
+		call eax;
+		add esp, 0x4C;
+		jmp eor;
+	add0x50:
+		call eax;
+		add esp, 0x50;
 		jmp eor;
 	callee:
 		mov eax, address;
@@ -494,6 +548,24 @@ void __declspec(naked) LuaLandingFromCpp() {
 		je ret0x28;
 		cmp eax, 11;
 		je ret0x2C;
+		cmp eax, 12;
+		je ret0x30;
+		cmp eax, 13;
+		je ret0x34;
+		cmp eax, 14;
+		je ret0x38;
+		cmp eax, 15;
+		je ret0x3C;
+		cmp eax, 16;
+		je ret0x40;
+		cmp eax, 17;
+		je ret0x44;
+		cmp eax, 18;
+		je ret0x48;
+		cmp eax, 19;
+		je ret0x4C;
+		cmp eax, 20;
+		je ret0x50;
 		jmp retNone;
 
 	ret0x0:
@@ -543,6 +615,43 @@ void __declspec(naked) LuaLandingFromCpp() {
 	ret0x2C:
 		call executeLuaHook;
 		ret 0x2C;
+
+	ret0x30:
+		call executeLuaHook;
+		ret 0x30;
+
+	ret0x34:
+		call executeLuaHook;
+		ret 0x34;
+
+	ret0x38:
+		call executeLuaHook;
+		ret 0x38;
+
+	ret0x3C:
+		call executeLuaHook;
+		ret 0x3C;
+
+	ret0x40:
+		call executeLuaHook;
+		ret 0x40;
+
+	ret0x44:
+		call executeLuaHook;
+		ret 0x44;
+
+	ret0x48:
+		call executeLuaHook;
+		ret 0x48;
+
+	ret0x4C:
+		call executeLuaHook;
+		ret 0x4C;
+
+	ret0x50:
+		call executeLuaHook;
+		ret 0x50;
+		
 
 	retNone:
 		call executeLuaHook;
