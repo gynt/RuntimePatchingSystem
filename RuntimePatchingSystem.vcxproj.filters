@@ -16,12 +16,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
-    <None Include="packages.config" />
     <None Include="README.md" />
     <None Include="LICENSE" />
     <None Include=".gitignore" />
     <None Include="RPS.targets" />
     <None Include="RuntimePatchingSystem.nuspec" />
+    <None Include="Directory.Build.props" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">

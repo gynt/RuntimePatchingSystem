@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+	<EnableCentralPackageVersions>true</EnableCentralPackageVersions>
+    <TargetFramework>native</TargetFramework>
+	<RestoreAdditionalProjectSources>
+		<!-- for lua -->
+      https://api.nuget.org/v3/index.json; 			
+    </RestoreAdditionalProjectSources>
+	<_NuGetTargetFallbackMoniker>$(_NuGetTargetFallbackMoniker);native,Version=v0.0</_NuGetTargetFallbackMoniker>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="lua" Version="5.4.3"/>
+  </ItemGroup>
+</Project>

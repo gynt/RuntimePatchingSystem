@@ -90,8 +90,8 @@
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include="cpp.hint" />
+    <None Include="Directory.Build.props" />
     <None Include="LICENSE" />
-    <None Include="packages.config" />
     <None Include="README.md" />
     <None Include="RPS.targets" />
     <None Include="RuntimePatchingSystem.nuspec" />
@@ -116,13 +116,4 @@
     <Xml Include="RPS-propertiesui.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\lua.5.4.3\build\native\Lua.targets" Condition="Exists('packages\lua.5.4.3\build\native\Lua.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\lua.5.4.3\build\native\Lua.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\lua.5.4.3\build\native\Lua.targets'))" />
-  </Target>
 </Project>
