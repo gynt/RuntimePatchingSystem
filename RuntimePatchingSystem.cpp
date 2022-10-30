@@ -39,6 +39,7 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"exposeCode", luaExposeCode},
 	{"detourCode", luaDetourCode},
 	{"allocate", luaAllocate},
+	{"deallocate", luaDeallocate},
 	{"allocateCode", luaAllocateRWE},
 
 	{"readByte", luaReadByte},

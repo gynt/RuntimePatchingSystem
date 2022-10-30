@@ -304,3 +304,20 @@ int luaAllocate(lua_State* L) {
 
 	return 1;
 }
+
+int luaDeallocate(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "Expected one argument");
+	}
+
+	int addr = luaL_checkinteger(L, 1);
+	if (addr == 0) {
+		return luaL_error(L, "Address is 0");
+	}
+
+	void* memory = (void* )((DWORD_PTR) addr);
+	free(memory);
+
+	return 0;
+}
+
