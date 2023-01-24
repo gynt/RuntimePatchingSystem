@@ -118,7 +118,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(std::string packageCPath);
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath);
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(std::string bootstrapFilePath);
 
-
+extern "C" RUNTIMEPATCHINGSYSTEM_API int luaopen_RPS(lua_State * L);
 
 
 

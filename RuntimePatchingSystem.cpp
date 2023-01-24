@@ -225,3 +225,10 @@ RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
 RUNTIMEPATCHINGSYSTEM_API void RPS_setLuaState(lua_State* value) {
 	L = value;
 }
+
+extern "C" RUNTIMEPATCHINGSYSTEM_API int luaopen_RPS(lua_State * L) {
+
+	luaL_newlib(L, RPS_LIB);
+
+	return 1;
+}
