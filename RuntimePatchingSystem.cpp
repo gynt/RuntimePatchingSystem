@@ -41,6 +41,7 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"allocate", luaAllocate},
 	{"deallocate", luaDeallocate},
 	{"allocateCode", luaAllocateRWE},
+	{"deallocateCode", luaDeallocateRWE},
 
 	{"readByte", luaReadByte},
 	{"readSmallInteger", luaReadSmallInteger},

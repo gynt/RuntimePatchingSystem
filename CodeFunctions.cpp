@@ -951,12 +951,12 @@ int luaDeallocateRWE(lua_State* L) {
 		return luaL_error(L, "Expected one argument");
 	}
 
-	int addr = luaL_checkinteger(L, 1);
+	long addr = luaL_checkinteger(L, 1);
 	if (addr == 0) {
 		return luaL_error(L, "Address is 0");
 	}
 
-	void* memory = (void*)((DWORD_PTR)addr);
+	LPVOID memory = (LPVOID) addr;
 	HeapFree(ProcessMemory::getInstance().codeHeap, 0, memory);
 
 	return 0;

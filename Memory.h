@@ -10,13 +10,13 @@ public:
         static ProcessMemory    instance; // Guaranteed to be destroyed.
                               // Instantiated on first use.
 
-        instance.codeHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
-        instance.dataHeap = GetProcessHeap();
-
         return instance;
     }
 private:
-    ProcessMemory() {}                    // Constructor? (the {} brackets) are needed here.
+    ProcessMemory() {
+        codeHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
+        dataHeap = GetProcessHeap();
+    }                    // Constructor? (the {} brackets) are needed here.
 
     // C++ 11
     // =======
