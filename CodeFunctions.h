@@ -10,6 +10,7 @@
 #include <iostream>
 #include "AOB.h"
 #include "UtilityFunctions.h"
+#include "Memory.h"
 
 extern HANDLE codeHeap;
 

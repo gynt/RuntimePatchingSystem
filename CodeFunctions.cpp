@@ -27,8 +27,6 @@ enum CallingConvention {
 	STDCALL = 2,
 };
 
-HANDLE codeHeap = 0;
-
 bool DoCreateCallHook(DWORD from_address, DWORD to_address, int hookSize, DWORD& newFunctionLocation) {
 	constexpr INT8 NOP = (INT8)0x90;
 	constexpr INT8 JMP = (INT8)0xE9;
@@ -938,7 +936,7 @@ int luaAllocateRWE(lua_State* L) {
 	GetSystemInfo(&system_info);
 	auto const page_size = system_info.dwPageSize;
 
-	LPVOID adr = HeapAlloc(codeHeap, 0, size);
+	LPVOID adr = HeapAlloc(ProcessMemory::getInstance().codeHeap, 0, size);
 	if (adr == 0) {
 		return luaL_error(L, "failed to allocate executable memory");
 	}
@@ -946,6 +944,22 @@ int luaAllocateRWE(lua_State* L) {
 	lua_pushinteger(L, (DWORD_PTR)adr);
 
 	return 1;
+}
+
+int luaDeallocateRWE(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "Expected one argument");
+	}
+
+	int addr = luaL_checkinteger(L, 1);
+	if (addr == 0) {
+		return luaL_error(L, "Address is 0");
+	}
+
+	void* memory = (void*)((DWORD_PTR)addr);
+	HeapFree(ProcessMemory::getInstance().codeHeap, 0, memory);
+
+	return 0;
 }
 
 bool validateAOBQuery(const char* query) {

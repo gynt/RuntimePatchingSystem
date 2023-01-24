@@ -76,11 +76,6 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI();
 RUNTIMEPATCHINGSYSTEM_API extern const struct luaL_Reg RPS_LIB[];
 
 /**
- * Initializes the heap memory used by the lua code functions to store executable code.
- */
-RUNTIMEPATCHINGSYSTEM_API bool RPS_initializeCodeHeap();
-
-/**
  * Deinitialize the lua api. Destroys the lua state and destroys the code heap.
  */
 RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize();

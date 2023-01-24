@@ -159,13 +159,6 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua() {
 	L = luaL_newstate();
 }
 
-RUNTIMEPATCHINGSYSTEM_API bool RPS_initializeCodeHeap() {
-	if (codeHeap == 0) {
-		codeHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); // start out with one page
-	}
-	return codeHeap != 0;
-}
-
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenLibs() {
 	luaL_openlibs(L);
 }
@@ -176,8 +169,6 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenBase() {
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, bool initializePrintRedirect) {
 	RPS_initializeLua();
-
-	RPS_initializeCodeHeap();
 
 	RPS_initializeLuaOpenLibs();
 
@@ -195,10 +186,6 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath) {
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize() {
 	lua_close(L);
-
-	if (codeHeap != 0) {
-		HeapDestroy(codeHeap);
-	}
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
