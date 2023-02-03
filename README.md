@@ -2,6 +2,13 @@
 # RuntimePatchingSystem
 A patching system that supports modifying, extending (detouring, hooking), and patching code in memory at runtime. Uses Lua
 
+## Usage
+Compile to a dll. The dll can then be loaded from inside lua
+```lua
+rps = require("RPS.dll")
+rps.hookCode(...) -- etc
+```
+
 ## Features
 ### Hooking functions with Lua functions
 
