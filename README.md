@@ -5,7 +5,7 @@ A patching system that supports modifying, extending (detouring, hooking), and p
 ## Usage
 Compile to a dll. The dll can then be loaded from inside lua
 ```lua
-rps = require("RPS.dll")
+rps = require("RPS")
 rps.hookCode(...) -- etc
 ```
 
