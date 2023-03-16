@@ -172,7 +172,7 @@ int luaExposeCode(lua_State* L) {
 	int argumentCount = lua_tointeger(L, 2);
 	
 	int callingConvention = lua_tointeger(L, 3);
-	if (callingConvention < CallingConvention::CALLER || callingConvention > CallingConvention::THISCALL) {
+	if (callingConvention < CallingConvention::CALLER || callingConvention > CallingConvention::STDCALL) {
 		return luaL_error(L, "argument 3 must be a valid calling convention");
 	}
 
