@@ -26,26 +26,6 @@
         <RPSRuntimePlatform>v143</RPSRuntimePlatform>
       </PropertyGroup>
     </When>
-    <When Condition="'$(PlatformToolset)' == 'v142'">
-      <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
-        <RPSRuntimePlatform>v142</RPSRuntimePlatform>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(PlatformToolset)' == 'v141'">
-      <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
-        <RPSRuntimePlatform>v141</RPSRuntimePlatform>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(PlatformToolset)' == 'v140'">
-      <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
-        <RPSRuntimePlatform>v140</RPSRuntimePlatform>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(PlatformToolset)' == 'v120'">
-      <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
-        <RPSRuntimePlatform>v120</RPSRuntimePlatform>
-      </PropertyGroup>
-    </When>
     <Otherwise>
       <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
         <RPSRuntimePlatform>ERROR</RPSRuntimePlatform>

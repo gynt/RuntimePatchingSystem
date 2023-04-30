@@ -19,11 +19,11 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="Debug\RPS.dll" target="build\native\bin\Win32\v142\Debug"/>
-    <file src="Debug\RPS.lib" target="build\native\lib\Win32\v142\Debug"/>
-    <file src="Debug\RPS.pdb" target="build\native\lib\Win32\v142\Debug"/>
-    <file src="Release\RPS.dll" target="build\native\bin\Win32\v142\Release"/>
-    <file src="Release\RPS.lib" target="build\native\lib\Win32\v142\Release"/>
+    <file src="Debug\RPS.dll" target="build\native\bin\Win32\v143\Debug"/>
+    <file src="Debug\RPS.lib" target="build\native\lib\Win32\v143\Debug"/>
+    <file src="Debug\RPS.pdb" target="build\native\lib\Win32\v143\Debug"/>
+    <file src="Release\RPS.dll" target="build\native\bin\Win32\v143\Release"/>
+    <file src="Release\RPS.lib" target="build\native\lib\Win32\v143\Release"/>
     <file src="RuntimePatchingSystem.h" target="build\native\include"/>
     <file src="RPS.targets" target="build\native"/>
     <file src="RPS-propertiesui.xml" target="build\native"/>
