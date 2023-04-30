@@ -21,6 +21,11 @@
     </Otherwise>
   </Choose>
   <Choose>
+    <When Condition="'$(PlatformToolset)' == 'v143'">
+      <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
+        <RPSRuntimePlatform>v143</RPSRuntimePlatform>
+      </PropertyGroup>
+    </When>
     <When Condition="'$(PlatformToolset)' == 'v142'">
       <PropertyGroup Condition="'$(RPSRuntimePlatform)' == ''">
         <RPSRuntimePlatform>v142</RPSRuntimePlatform>
