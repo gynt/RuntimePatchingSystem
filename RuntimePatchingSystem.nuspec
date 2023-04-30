@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>RPS</id>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
     <title>Runtime Patching System</title>
     <authors>gynt</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -15,7 +15,7 @@
     <copyright>Copyright 2021</copyright>
     <tags>Native native Lua Hook Detour Patching</tags>
     <dependencies>
-      <dependency id="Lua" version="5.4.3" include="native" />
+      <dependency id="Lua" version="5.4.4.1" include="native" />
     </dependencies>
   </metadata>
   <files>
