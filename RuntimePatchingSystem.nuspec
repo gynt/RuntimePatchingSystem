@@ -15,7 +15,7 @@
     <copyright>Copyright 2021</copyright>
     <tags>Native native Lua Hook Detour Patching</tags>
     <dependencies>
-      <dependency id="Lua" version="5.4.4.1" include="native" />
+      <dependency id="lua" version="5.4.4.1" include="native" />
     </dependencies>
   </metadata>
   <files>
