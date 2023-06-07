@@ -1,6 +1,6 @@
 
 # RuntimePatchingSystem
-A patching system that supports modifying, extending (detouring, hooking), and patching code in memory at runtime. Uses Lua
+A patching system that supports modifying, extending (detouring, hooking), and patching code in memory at runtime. Uses Lua. Only supports x86.
 
 ## Usage
 Compile to a dll. The dll can then be loaded from inside lua
