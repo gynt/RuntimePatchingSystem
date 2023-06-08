@@ -100,6 +100,7 @@
     <ClInclude Include="AOB.h" />
     <ClInclude Include="CodeFunctions.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="LibraryFunctions.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RuntimePatchingSystem.h" />
     <ClInclude Include="MemoryFunctions.h" />
@@ -109,6 +110,7 @@
     <ClCompile Include="AOB.cpp" />
     <ClCompile Include="CodeFunctions.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="LibraryFunctions.cpp" />
     <ClCompile Include="RuntimePatchingSystem.cpp" />
     <ClCompile Include="MemoryFunctions.cpp" />
     <ClCompile Include="UtilityFunctions.cpp" />

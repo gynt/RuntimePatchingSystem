@@ -11,6 +11,7 @@
 #include "CodeFunctions.h"
 #include "MemoryFunctions.h"
 #include "UtilityFunctions.h"
+#include "LibraryFunctions.h"
 
 
 static int l_my_print(lua_State* L) {
@@ -42,6 +43,10 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"deallocate", luaDeallocate},
 	{"allocateCode", luaAllocateRWE},
 	{"deallocateCode", luaDeallocateRWE},
+
+	{"loadLibraryA", luaLoadLibraryA},
+	{"getLibraryProcAddressA", luaGetLibraryProcAddressA},
+	{"getProcAddress", luaGetProcAddress},
 
 	{"readByte", luaReadByte},
 	{"readSmallInteger", luaReadSmallInteger},
