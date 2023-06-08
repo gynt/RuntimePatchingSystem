@@ -324,7 +324,14 @@ int luaCallMachineCode(lua_State* L) {
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
+			if (lua_type(L, i + 1 + 1) != LUA_TNUMBER) {
+				return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " argument #" + std::to_string(i + 1 + 1) + " is not an integer (or pointer);").c_str());
+			}
 			fakeStack[i] = lua_tointeger(L, i + 1 + 1); // i+1+1 (1 to offset 0-base and 1 because this-parameter is ignored
+		}
+
+		if (lua_type(L, 1) != LUA_TNUMBER) {
+			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " ecx value is not an integer (or pointer);").c_str());
 		}
 
 		currentECXValue = lua_tointeger(L, 1); // this parameter
@@ -336,6 +343,9 @@ int luaCallMachineCode(lua_State* L) {
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
+			if (lua_type(L, i + 1) != LUA_TNUMBER) {
+				return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " argument #" + std::to_string(i+1) + " is not an integer (or pointer);").c_str());
+			}
 			fakeStack[i] = lua_tointeger(L, i + 1); // i + 1 to offset the 0-base
 		}
 
