@@ -737,6 +737,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 		return;
 	}
 
+	int before = lua_gettop(L);
+
 	lua_rawgeti(L, LUA_REGISTRYINDEX, entry->luaFunctionRef);
 
 	if (lua_isfunction(L, -1)) {
@@ -767,6 +769,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 						luaErrorMsg = "The return value table must have string keys";
 						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
+
+						lua_settop(L, before);
 						return;
 					}
 					if (!lua_isinteger(L, -1)) {
@@ -774,6 +778,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 						luaErrorMsg = "The return value table must have integer values";
 						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
+
+						lua_settop(L, before);
 						return;
 					}
 
@@ -786,6 +792,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 						luaErrorMsg = "The key does not exist: " + key;
 						std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
 						currentDetourReturn = retLoc;
+
+						lua_settop(L, before);
 						return;
 					}
 
@@ -802,7 +810,10 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 					/* removes 'value'; keeps 'key' for next iteration */
 					lua_pop(L, 1);
 				}
+				lua_pop(L, 1); // pop off the return value;
 				currentDetourReturn = retLoc;
+
+				lua_settop(L, before);
 				return;
 			}
 			else {
@@ -811,6 +822,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 			}
 			lua_pop(L, 1); // pop off the return value;
 			currentDetourReturn = retLoc;
+
+			lua_settop(L, before);
 			return;
 		}
 		else {
@@ -826,6 +839,8 @@ void __stdcall GetDetourLuaTargetAndCallTheLuaFunction(DWORD address, DWORD* reg
 	}
 
 	std::cout << "[RPS]: " << std::string(luaErrorMsg) << std::endl;
+
+	lua_settop(L, before);
 	currentDetourReturn = retLoc;
 }
 
