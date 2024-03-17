@@ -43,8 +43,7 @@ int luaReadInteger(lua_State* L) {
 
 int luaReadString(lua_State* L) {
 	DWORD address = 0;
-	int maxLength = 0;
-	int length = 0;
+	size_t length = 0;
 	bool wide = false;
 	if (lua_gettop(L) == 0) {
 		return luaL_error(L, "too few arguments passed to readString");
@@ -55,18 +54,26 @@ int luaReadString(lua_State* L) {
 	}
 
 	if (lua_gettop(L) == 2) {
-		maxLength = lua_tointeger(L, 2);
+		if (!lua_isnil(L, 2)) {
+			length = lua_tointeger(L, 2);
+		}
 	}
 	if (lua_gettop(L) == 3) {
 		wide = lua_tointeger(L, 3) == 1;
 	}
 
-	if (wide || maxLength) {
-		return luaL_error(L, "sorry, maxlength and wide are not supported yet.");
+	if (wide) {
+		return luaL_error(L, "sorry, wide string is not supported yet.");
 	}
 
-	std::string result((char*)address);
-	lua_pushstring(L, result.c_str());
+	if (length > 0) {
+		lua_pushlstring(L, (const char*)address, length);
+	}
+	else {
+		// Finds the first \0 byte and terminates
+		std::string result((const char*)address);
+		lua_pushstring(L, result.c_str());
+	}
 
 	return 1;
 }
@@ -106,15 +113,16 @@ int luaWriteString(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 
-	std::string value = lua_tostring(L, 2);
+	size_t size = 0;
+	std::string value = lua_tolstring(L, 2, &size);
 
 #ifdef _DEBUG
-	if (!canWrite(address, value.size())) {
+	if (!canWrite(address, size)) {
 		return luaL_error(L, ("cannot write " + std::to_string(1) + " string to location: " + std::to_string(address)).c_str());
 	}
 #endif
 
-	memcpy((void*)address, value.c_str(), value.size());
+	memcpy((void*)address, value.data(), size);
 	
 	return 0;
 }
@@ -218,7 +226,7 @@ int luaWriteBytes(lua_State* L) {
 	bytes.seekg(0, bytes.beg);
 
 	// str() is null-terminated, but size is the size without the final null byte, which makes this correct
-	memcpy((void*)address, &bytes.str().data()[0], size);
+	memcpy((void*)address, bytes.str().data(), size);
 
 	return 0;
 }

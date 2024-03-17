@@ -31,6 +31,8 @@ int luaWriteString(lua_State* L);
 
 int luaMemCpy(lua_State* L);
 
+int luaMemSet(lua_State* L);
+
 int luaAllocate(lua_State* L);
 
 int luaDeallocate(lua_State* L);

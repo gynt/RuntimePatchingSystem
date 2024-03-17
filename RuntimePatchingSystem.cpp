@@ -39,6 +39,7 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"callOriginal", luaCallMachineCode},
 	{"exposeCode", luaExposeCode},
 	{"detourCode", luaDetourCode},
+
 	{"allocate", luaAllocate},
 	{"deallocate", luaDeallocate},
 	{"allocateCode", luaAllocateRWE},
@@ -57,11 +58,13 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"writeByte", luaWriteByte},
 	{"writeSmallInteger", luaWriteSmallInteger},
 	{"writeInteger", luaWriteInteger},
-	{"writeBytes", luaWriteBytes},
 	{"writeString", luaWriteString},
+	{"writeBytes", luaWriteBytes},
+	
 	{"writeCode", luaWriteCode},
 
 	{"copyMemory", luaMemCpy},
+	{"setMemory", luaMemSet},
 
 	{"registerString", registerString},
 

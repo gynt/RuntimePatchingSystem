@@ -934,7 +934,7 @@ int luaWriteCode(lua_State* L) {
 	DWORD oldProtect;
 	VirtualProtect((LPVOID)address, size, PAGE_EXECUTE_READWRITE, &oldProtect);
 
-	memcpy((void*)address, &bytes.str().data()[0], size);
+	memcpy((void*)address, bytes.str().data(), size);
 
 	VirtualProtect((LPVOID)address, size, oldProtect, &oldProtect);
 
