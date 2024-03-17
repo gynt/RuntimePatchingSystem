@@ -1,6 +1,8 @@
 
 #include "MemoryFunctions.h"
 
+#include "CodeFunctions.h"
+
 int luaReadByte(lua_State* L) {
 	if (lua_gettop(L) != 1) {
 		return luaL_error(L, "expected exactly 1 argument");
@@ -200,34 +202,23 @@ int luaWriteBytes(lua_State* L) {
 	}
 #endif
 
-	int i = 0;
+	// Makes use the of the table at -1 (2)
+	std::stringstream bytes;
+	int returnCode = convertTableToByteStream(L, &bytes);
 
-	lua_pushvalue(L, 2); // push the table again; so that it is at -1
-
-	/* table is in the stack at index 't' */
-	lua_pushnil(L);  /* first key */
-	while (lua_next(L, -2) != 0) {
-		/* uses 'key' (at index -2) and 'value' (at index -1) */
-		if (!lua_isinteger(L, -1)) {
-			//lua_pushliteral(L, "The return value table must have integer values");
-			//lua_error(L);
-			return luaL_error(L, "The return value table must have integer values");
-		}
-
-		int value = lua_tointeger(L, -1);
-		if (value < 0) {
-			return luaL_error(L, "The values must all be positive");
-		}
-
-		*((BYTE*)(address + i)) = value;
-		i += 1;
-
-		/* removes 'value'; keeps 'key' for next iteration */
-		lua_pop(L, 1);
+	if (returnCode == -1) {
+		return luaL_error(L, "The return value table must have integer values");
 	}
-	//lua_next pops the key from the stack, if we reached the end, there is no key on the stack.
+	else if (returnCode == -2) {
+		return luaL_error(L, "The values must all be positive");
+	}
 
-	lua_pop(L, 1); //removes 'table'
+	bytes.seekg(0, bytes.end);
+	int size = bytes.tellg();
+	bytes.seekg(0, bytes.beg);
+
+	// str() is null-terminated, but size is the size without the final null byte, which makes this correct
+	memcpy((void*)address, &bytes.str().data()[0], size);
 
 	return 0;
 }
@@ -265,6 +256,37 @@ int luaMemCpy(lua_State* L) {
 }
 
 
+int luaMemSet(lua_State* L) {
+
+	if (lua_gettop(L) != 3) {
+		return luaL_error(L, "expected exactly 3 arguments");
+	}
+
+	DWORD dst = lua_tointeger(L, 1);
+	if (dst == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+
+	DWORD val = lua_tointeger(L, 2);
+	if (val == 0) {
+		return luaL_error(L, "argument 2 must be a valid integer");
+	}
+
+	int size = lua_tointeger(L, 3);
+	if (size == 0) {
+		return luaL_error(L, "argument 3 must be a valid size higher than 0");
+	}
+
+#ifdef _DEBUG
+	if (!canWrite(dst, size)) {
+		return luaL_error(L, ("cannot write " + std::to_string(size) + " bytes to location: " + std::to_string(dst)).c_str());
+	}
+#endif
+
+	memset((void*)dst, val, size);
+
+	return 0;
+}
 
 
 std::set<std::string> stringSet;

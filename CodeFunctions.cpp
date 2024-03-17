@@ -872,15 +872,16 @@ void __declspec(naked) detourLandingFunction() {
 
 
 int convertTableToByteStream(lua_State* L, std::stringstream* s) {
-	int i = 0;
 
-	/* table is in the stack at index 't' */
-	lua_pushnil(L);  /* first key */
-	while (lua_next(L, -2) != 0) {
-		/* uses 'key' (at index -2) and 'value' (at index -1) */
+	for (int i = 1; ; i++) {
+		lua_geti(L, -1, i);
+
+		if (lua_isnil(L, -1)) {
+			lua_pop(L, 1);
+			break;
+		}
+
 		if (!lua_isinteger(L, -1)) {
-			//lua_pushliteral(L, "The return value table must have integer values");
-			//lua_error(L);
 			return -1;
 		}
 
@@ -893,13 +894,9 @@ int convertTableToByteStream(lua_State* L, std::stringstream* s) {
 			s->write(reinterpret_cast<const char*>(&value), 4);
 		}
 
-
-		i += 1;
-
-		/* removes 'value'; keeps 'key' for next iteration */
+		/* removes 'value' */
 		lua_pop(L, 1);
 	}
-
 
 	return 0;
 }
@@ -919,10 +916,9 @@ int luaWriteCode(lua_State* L) {
 	// write an intermediate state here that extracts the table and converts bytes to bytes
 // and that converts integers to 4 bytes in big endian order.
 // 
-	lua_pushvalue(L, 2); // push the table so we can be sure it is at -1
+	// Makes use the of the table at -1 (2)
 	std::stringstream bytes;
 	int returnCode = convertTableToByteStream(L, &bytes);
-	lua_pop(L, 1); // pop the table;
 
 	if (returnCode == -1) {
 		return luaL_error(L, "The return value table must have integer values");
