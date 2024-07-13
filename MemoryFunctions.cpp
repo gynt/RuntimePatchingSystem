@@ -275,10 +275,11 @@ int luaMemSet(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 
-	DWORD val = lua_tointeger(L, 2);
-	if (val == 0) {
+	if (lua_type(L, 2) != LUA_TNUMBER) {
 		return luaL_error(L, "argument 2 must be a valid integer");
 	}
+	DWORD val = lua_tointeger(L, 2);
+
 
 	int size = lua_tointeger(L, 3);
 	if (size == 0) {
