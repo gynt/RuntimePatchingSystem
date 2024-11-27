@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
 	  <PackageId>RPS</PackageId>
-	  <Version>1.4.0</Version>
+	  <Version>1.5.1</Version>
 	  <Authors>gynt</Authors>
 	  <Company>gynt</Company>
     <Copyright>2023</Copyright>
