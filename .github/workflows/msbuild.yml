@@ -18,7 +18,7 @@ jobs:
     #   matrix:
     #     BUILD_CONFIGURATION: [Debug, Release]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@latest
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
@@ -44,7 +44,7 @@ jobs:
       run: nuget pack RuntimePatchingSystem.nuspec
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.3
+      uses: actions/upload-artifact@v4
       with:
         # Artifact name
         name: NuGet # optional, default is artifact
@@ -52,7 +52,7 @@ jobs:
         path: "*.nupkg"
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.3
+      uses: actions/upload-artifact@v4
       with:
         # Artifact name
         name: Release binaries # optional, default is artifact
@@ -60,7 +60,7 @@ jobs:
         path: Release/*.dll
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.3
+      uses: actions/upload-artifact@v4
       with:
         # Artifact name
         name: Debug binaries # optional, default is artifact
