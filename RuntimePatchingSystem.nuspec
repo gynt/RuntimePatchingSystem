@@ -2,9 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>RPS</id>
-    <version>1.5.1</version>
+    <version>1.5.2</version>
     <title>Runtime Patching System</title>
     <authors>gynt</authors>
+    <readme>build\README.md</readme>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">AGPL-3.0-or-later</license>
     <projectUrl>https://github.com/gynt/RuntimePatchingSystem/</projectUrl>
