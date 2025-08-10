@@ -882,6 +882,7 @@ int convertTableToByteStream(lua_State* L, std::stringstream* s) {
 		}
 
 		if (!lua_isinteger(L, -1)) {
+			lua_pop(L, 1);
 			return -1;
 		}
 

@@ -114,7 +114,7 @@ int luaWriteString(lua_State* L) {
 	}
 
 	size_t size = 0;
-	std::string value = lua_tolstring(L, 2, &size);
+	const char* value = lua_tolstring(L, 2, &size);
 
 #ifdef _DEBUG
 	if (!canWrite(address, size)) {
@@ -122,8 +122,8 @@ int luaWriteString(lua_State* L) {
 	}
 #endif
 
-	memcpy((void*)address, value.data(), size);
-	
+	memcpy((void*)address, value, size);
+
 	return 0;
 }
 
