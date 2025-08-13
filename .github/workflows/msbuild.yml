@@ -19,6 +19,8 @@ jobs:
     #     BUILD_CONFIGURATION: [Debug, Release]
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
@@ -63,8 +65,8 @@ jobs:
         "lunatest.run()" | Add-Content -Path "tests\run.lua"
 
 
-        & lua.exe tests\run.lua -v
-        
+        & .\lua.exe tests\run.lua -v
+
         Remove-Item *.dll
         Remove-Item *.exe
         Remove-Item .\tests\run.lua
