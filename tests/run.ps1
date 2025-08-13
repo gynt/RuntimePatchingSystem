@@ -1,3 +1,5 @@
+$ErrorActionPreference = 'Stop'
+
 Invoke-WebRequest https://www.nuget.org/api/v2/package/lua/5.4.6 -OutFile lua-5.4.6.zip
 Expand-Archive -Path .\lua-5.4.6.zip -DestinationPath lua
 Remove-Item -Path lua-5.4.6.zip
