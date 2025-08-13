@@ -39,6 +39,11 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Platform=x86 /p:Configuration=Release ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Test
+      shell: pwsh
+      run: |
+        & tests\run.ps1
+
     - name: Create nuget package
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget pack RuntimePatchingSystem.nuspec
