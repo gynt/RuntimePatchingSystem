@@ -19,7 +19,7 @@ Get-Item -Path "tests\test-*.lua" | Resolve-Path -Relative | ForEach-Object {$_.
 "lunatest.run()" | Add-Content -Path "tests\run.lua"
 
 
-& lua.exe tests\run.lua -v
+& .\lua.exe tests\run.lua -v
 
 Remove-Item *.dll
 Remove-Item *.exe
