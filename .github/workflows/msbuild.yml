@@ -72,8 +72,10 @@ jobs:
         # A file, directory or wildcard pattern that describes what to upload
         path: Debug/*.dll
     - name: Set up nuget source
+      if: startsWith(github.ref, 'refs/tags/v')
       run: nuget sources add -Source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json -Name github -Username ${{ github.repository_owner }} -Password ${{ github.token }} -StorePasswordInClearText
     - name: Publish Nuget to GitHub registry
+      if: startsWith(github.ref, 'refs/tags/v')
       run: nuget push *.nupkg -Source github -SkipDuplicate -NoSymbols 
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
