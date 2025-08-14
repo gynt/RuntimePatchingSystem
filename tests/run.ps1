@@ -13,9 +13,11 @@ if ($installLua) {
   Remove-Item -Path lua-5.4.6.zip
   Move-Item -Path .\lua\build\native\bin\Win32\v143\Release\* -Destination .
   Remove-Item -Recurse -Path lua\
+
+  $command = Get-Command ".\lua.exe"
 }
 
-$command = Get-Command "lua.exe"
+
 
 Copy-Item -Path Release\*.dll -Destination .
 
