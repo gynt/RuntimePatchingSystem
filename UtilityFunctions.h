@@ -4,7 +4,7 @@
 #include <iostream>
 #include "lua.hpp"
 
-extern lua_State* L;
+extern lua_State* LC;
 
 #ifdef _DEBUG
 

@@ -1,6 +1,6 @@
 #include "UtilityFunctions.h"
 
-lua_State* L = 0;
+lua_State* LC = 0;
 
 #ifdef _DEBUG
 

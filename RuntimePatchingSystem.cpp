@@ -80,7 +80,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect() {
-	return RPS_initializePrintRedirect(L);
+	return RPS_initializePrintRedirect(LC);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string apiNamespace) {
@@ -101,7 +101,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string ap
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(std::string apiNamespace) {
-	return RPS_initializeLuaAPI(L, apiNamespace);
+	return RPS_initializeLuaAPI(LC, apiNamespace);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L) {
@@ -109,7 +109,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L) {
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI() {
-	return RPS_initializeLuaAPI(L);
+	return RPS_initializeLuaAPI(LC);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string packagePath) {
@@ -121,7 +121,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(lua_State* L, std::string pa
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackagePath(std::string packagePath) {
-	return RPS_setupPackagePath(L, packagePath);
+	return RPS_setupPackagePath(LC, packagePath);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string packageCPath) {
@@ -133,7 +133,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(lua_State* L, std::string p
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setupPackageCPath(std::string packageCPath) {
-	return RPS_setupPackageCPath(L, packageCPath);
+	return RPS_setupPackageCPath(LC, packageCPath);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bootstrapFilePath) {
@@ -161,19 +161,19 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(lua_State* L, std::string bo
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_runBootstrapFile(std::string bootstrapFilePath) {
-	return RPS_runBootstrapFile(L, bootstrapFilePath);
+	return RPS_runBootstrapFile(LC, bootstrapFilePath);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLua() {
-	L = luaL_newstate();
+	LC = luaL_newstate();
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenLibs() {
-	luaL_openlibs(L);
+	luaL_openlibs(LC);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaOpenBase() {
-	luaL_requiref(L, "base", luaopen_base, true);
+	luaL_requiref(LC, "base", luaopen_base, true);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, bool initializePrintRedirect) {
@@ -181,12 +181,12 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath, boo
 
 	RPS_initializeLuaOpenLibs();
 
-	if (initializePrintRedirect) RPS_initializePrintRedirect(L);
+	if (initializePrintRedirect) RPS_initializePrintRedirect(LC);
 
-	RPS_initializeLuaAPI(L, "global");
+	RPS_initializeLuaAPI(LC, "global");
 
 
-	RPS_runBootstrapFile(L, bootstrapFilePath);
+	RPS_runBootstrapFile(LC, bootstrapFilePath);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath) {
@@ -194,48 +194,48 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initialize(std::string bootstrapFilePath) {
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_deinitialize() {
-	lua_close(L);
+	lua_close(LC);
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_executeSnippet(std::string code) {
-	int before = lua_gettop(L);
-	int r = luaL_dostring(L, code.c_str());
+	int before = lua_gettop(LC);
+	int r = luaL_dostring(LC, code.c_str());
 	if (r == LUA_OK) {
-		int after = lua_gettop(L);
+		int after = lua_gettop(LC);
 		if (after - before > 0) {
 			for (int i = before; i < after; i++) {  /* for each argument */
 				size_t l;
-				const char* s = luaL_tolstring(L, i, &l);  /* convert it to string */
+				const char* s = luaL_tolstring(LC, i, &l);  /* convert it to string */
 				if (i > 1)  /* not the first element? */
 					lua_writestring("\t", 1);  /* add a tab before it */
 				lua_writestring(s, l);  /* print it */
-				lua_pop(L, 1);  /* pop result */
+				lua_pop(LC, 1);  /* pop result */
 			}
 			lua_writeline();
 		}
-		lua_pop(L, after - before);
+		lua_pop(LC, after - before);
 	}
 	else {
-		std::string errormsg = lua_tostring(L, -1);
+		std::string errormsg = lua_tostring(LC, -1);
 		std::cout << "[RPS]: error in lua snippet: " << errormsg << std::endl;
-		lua_pop(L, 1); // pop off the error message;
+		lua_pop(LC, 1); // pop off the error message;
 	}
 }
 
 RUNTIMEPATCHINGSYSTEM_API int RPS_getCurrentStackSize() {
-	return lua_gettop(L);
+	return lua_gettop(LC);
 }
 
 RUNTIMEPATCHINGSYSTEM_API lua_State* RPS_getLuaState() {
-	return L;
+	return LC;
 }
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_setLuaState(lua_State* value) {
-	L = value;
+	LC = value;
 }
 
 extern "C" RUNTIMEPATCHINGSYSTEM_API int luaopen_RPS(lua_State * L) {
-
+	RPS_setLuaState(L);
 	luaL_newlib(L, RPS_LIB);
 
 	return 1;
