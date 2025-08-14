@@ -1,3 +1,4 @@
+param ($Cleanup = $true)
 $ErrorActionPreference = 'Stop'
 
 $installLua = $false
@@ -30,10 +31,13 @@ Get-Item -Path "tests\test-*.lua" | Resolve-Path -Relative | ForEach-Object {$_.
 
 & "$($command.Path)" tests\run.lua -v
 
-Remove-Item .\tests\run.lua
+if ($Cleanup) {
+  Remove-Item .\tests\run.lua
 
-Remove-Item *.dll
-if ($installLua) {
   Remove-Item *.dll
-  Remove-Item *.exe
+  if ($installLua) {
+    Remove-Item *.dll
+    Remove-Item *.exe
+  }
 }
+
