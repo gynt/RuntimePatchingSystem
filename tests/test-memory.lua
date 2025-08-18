@@ -48,17 +48,10 @@ function test_memory.test_allocateCode()
 end
 
 function test_memory.test_allocateCode_zero()
-  local addr = rps.allocateCode(1000, true)-- sample is hopefully high enough to not have all 0's
+  local status, errMsg = pcall(function() rps.allocateCode(1000, true) end)-- sample is hopefully high enough to not have all 0's
 
-  local nonZero = false
-  for _, value in ipairs(rps.readBytes(addr, 1000)) do
-    if value ~= 0 then
-      nonZero = true
-      break
-    end
-  end
-
-  lunatest.assert_false(nonZero, 'all zero values (unexpected)')
+  lunatest.assert_false(status)
+  lunatest.assert_equal("Wrong number of arguments passed", errMsg)
 end
 
 return test_memory
