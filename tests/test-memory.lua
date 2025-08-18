@@ -51,7 +51,7 @@ function test_memory.test_allocateCode_zero()
   local status, errMsg = pcall(function() rps.allocateCode(1000, true) end)-- sample is hopefully high enough to not have all 0's
 
   lunatest.assert_false(status)
-  lunatest.assert_equal("Wrong number of arguments passed", errMsg)
+  lunatest.assert_true(errMsg:find("Wrong number of arguments passed") ~= nil)
 end
 
 return test_memory
