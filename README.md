@@ -1,5 +1,5 @@
 
-# RuntimePatchingSystem
+# RuntimePatchingSystem [![MSBuild](https://github.com/gynt/RuntimePatchingSystem/actions/workflows/msbuild.yml/badge.svg?event=push)](https://github.com/gynt/RuntimePatchingSystem/actions/workflows/msbuild.yml)
 A patching system that supports modifying, extending (detouring, hooking), and patching code in memory at runtime. Uses Lua. Only supports x86.
 
 ## Usage
