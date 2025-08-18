@@ -1,6 +1,8 @@
 param ($Cleanup = $true)
 $ErrorActionPreference = 'Stop'
 
+$installRPS = $null -eq (Get-Item "RPS.dll" -ErrorAction SilentlyContinue)
+
 $installLua = $false
 $command = Get-Command "lua.exe" -ErrorAction SilentlyContinue
 if (($null -eq $command) -or ($command.Version.ToString() -ne "5.4.6.0")) {
@@ -18,8 +20,9 @@ if ($installLua) {
 }
 
 
-
-Copy-Item -Path Release\*.dll -Destination .
+if ($installRPS) {
+  Copy-Item -Path Release\*.dll -Destination .
+}
 
 Remove-Item .\tests\run.lua -ErrorAction SilentlyContinue
 
@@ -36,10 +39,12 @@ Get-Item -Path "tests\test-*.lua" | Resolve-Path -Relative | ForEach-Object {$_.
 if ($Cleanup) {
   Remove-Item .\tests\run.lua
 
-  Remove-Item *.dll
+  if ($installRPS) {
+    Remove-Item RPS.dll
+    Remove-Item lua.dll
+  }
   if ($installLua) {
-    Remove-Item *.dll
-    Remove-Item *.exe
+    Remove-Item lua.exe
   }
 }
 

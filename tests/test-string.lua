@@ -1,7 +1,6 @@
-local common = require("common")
+local lunatest = require("tests.lunatest.lunatest")
+local rps = require("RPS")
 
-local rps = common.rps
-local lunatest = common.lunatest
 
 local test_string = {}
 
