@@ -1,0 +1,12 @@
+local lunatest = require('tests.lunatest.lunatest')
+local rps = require("RPS")
+
+lunatest.suite('tests.test-cffi-parser-string')
+lunatest.suite('tests.test-code')
+lunatest.suite('tests.test-detour-code')
+lunatest.suite('tests.test-hook-code')
+lunatest.suite('tests.test-issues')
+lunatest.suite('tests.test-memory')
+lunatest.suite('tests.test-string')
+lunatest.suite('tests.test-success')
+lunatest.run()
