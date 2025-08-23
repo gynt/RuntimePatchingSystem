@@ -1,9 +1,13 @@
+local GLOBAL_OPTIONS = require("cffi.options")
 
 ---@enum TOKEN_TYPES
 local TOKEN_TYPES = {
   NONE = "NONE",
   DOUBLE_QUOTED_STRING = "DOUBLE_QUOTED_STRING",
   SINGLE_QUOTED_STRING = "SINGLE_QUOTED_STRING",
+  LONG = "LONG",
+  INTEGER = "INTEGER",
+  HEXADECIMAL = "HEXADECIMAL",
 }
 
 ---@class ParseState
@@ -51,15 +55,28 @@ local function copyToken(token)
   return copy
 end
 
-function ParseState:next(count)
+function ParseState:increment(count)
+  if GLOBAL_OPTIONS.VERBOSE == true then
+    print(string.format("increment(%s): from %s to %s", count, self.index, self.index + (count or 1)))
+  end
+
   self.index = self.index + (count or 1)
+end
+
+function ParseState:next(length, skip)
+  skip = skip or 0
+  ---TODO: decide on self.text or self.slice, if the latter, remove self.index
+  return self.text:sub(self.index + skip, self.index + skip + length - 1)
 end
 
 function ParseState:token()
   local index = self.index
   local slice = self.text:sub(index)
   self.slice = slice
-  local character = slice:sub(1, 1)
+  local character = self:next(1)
+  if GLOBAL_OPTIONS.VERBOSE == true then
+    print(character)
+  end
   self.character = character
   local token = self.currentToken
 
@@ -109,6 +126,36 @@ function ParseState:token()
        token.data = token.data .. character
        return 1
     end
+
+    if self:next(2) == "0x" then
+      local hexIndex, hexLength, hex = slice:find("([A-Fa-f0-9]+)", 3)
+      if hexIndex ~= 3 then
+        error(string.format("hexIndex not 1: %s", hexIndex))
+      end
+
+      return 2 + hexLength, {
+        type = TOKEN_TYPES.HEXADECIMAL,
+        data = tonumber(hex, 16)
+      }
+    end
+
+    local integerIndex, integerLength, integerOrLong = slice:find("([0-9]+)")
+    if integerIndex == 1 then
+      
+      if self:next(1, integerLength) == "L" then
+        if token.type == TOKEN_TYPES.HEXADECIMAL then error() end
+        return integerLength + 1, {
+          type = TOKEN_TYPES.LONG,
+          data = tonumber(integerOrLong, 10),
+        }
+      else
+        return integerLength, {
+          type = TOKEN_TYPES.INTEGER,
+          data = tonumber(integerOrLong, 10),
+        }
+      end
+    end
+
   end
 
   error(string.format("unhandled character: %s", character))
@@ -119,7 +166,7 @@ function ParseState:tokens()
 
   while self.index <= self.text:len() do
     local increment, token = self:token()
-    self:next(increment)
+    self:increment(increment)
 
     if token ~= nil then
       if token == self.currentToken then error() end

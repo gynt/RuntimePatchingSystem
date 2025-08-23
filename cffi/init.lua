@@ -1,6 +1,7 @@
-local Parser = require("cffi.parser")
 local cffi = {}
 
-cffi.Parser = Parser
+cffi.options = require("cffi.options")
+cffi.Parser = require("cffi.parser")
+
 
 return cffi
