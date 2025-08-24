@@ -61,6 +61,8 @@ function ParseState:next(length, skip)
   return self.text:sub(self.index + skip, self.index + skip + length - 1)
 end
 
+
+
 function ParseState:token()
   local index = self.index
   local slice = self.text:sub(index)
@@ -153,7 +155,15 @@ function ParseState:token()
       end
     end
 
-    local wordIndex, wordLength, word = slice:find("([_%w%[%]]+)")
+    local arraySpecIndex, arraySpecLength, arraySpec = slice:find("%[([0-9]+)%]")
+    if arraySpecIndex == 1 then
+      return arraySpecLength, {
+        type = TOKEN_TYPES.ARRAY_DIM,
+        data = arraySpec, -- the value
+      }
+    end
+
+    local wordIndex, wordLength, word = slice:find("([_%w]+)")
     if wordIndex == 1 then
       if word == "struct" then
         return wordLength, {

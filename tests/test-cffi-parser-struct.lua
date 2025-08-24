@@ -19,7 +19,7 @@ function test_cffi_parser_struct.test_struct()
     result = result .. string.format("TOKEN: type '%s', data: %s\n", token.type, token.data)
   end
 
-  lunatest.assert_equal(15, #tokens, 0)
+  lunatest.assert_equal(16, #tokens, 0)
   lunatest.assert_equal([[
 TOKEN: type 'STRUCT', data: struct
 TOKEN: type 'SYMBOL', data: A
@@ -28,7 +28,8 @@ TOKEN: type 'SYMBOL', data: int
 TOKEN: type 'SYMBOL', data: a
 TOKEN: type 'CHARACTER', data: ;
 TOKEN: type 'SYMBOL', data: int
-TOKEN: type 'SYMBOL', data: b[100]
+TOKEN: type 'SYMBOL', data: b
+TOKEN: type 'ARRAY_DIM', data: 100
 TOKEN: type 'CHARACTER', data: ;
 TOKEN: type 'SYMBOL', data: unsigned
 TOKEN: type 'SYMBOL', data: long
@@ -58,7 +59,7 @@ function test_cffi_parser_struct.test_typedef_struct()
     result = result .. string.format("TOKEN: type '%s', data: %s\n", token.type, token.data)
   end
 
-  lunatest.assert_equal(27, #tokens, 0)
+  lunatest.assert_equal(28, #tokens, 0)
   lunatest.assert_equal([[
 TOKEN: type 'TYPEDEF', data: typedef
 TOKEN: type 'STRUCT', data: struct
@@ -68,7 +69,8 @@ TOKEN: type 'SYMBOL', data: int
 TOKEN: type 'SYMBOL', data: a
 TOKEN: type 'CHARACTER', data: ;
 TOKEN: type 'SYMBOL', data: int
-TOKEN: type 'SYMBOL', data: b[100]
+TOKEN: type 'SYMBOL', data: b
+TOKEN: type 'ARRAY_DIM', data: 100
 TOKEN: type 'CHARACTER', data: ;
 TOKEN: type 'SYMBOL', data: unsigned
 TOKEN: type 'SYMBOL', data: long

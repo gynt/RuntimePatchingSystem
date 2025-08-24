@@ -13,6 +13,7 @@ local TOKEN_TYPES = {
   UNION = "UNION",
   TYPEDEF = "TYPEDEF",
   CHARACTER = "CHARACTER",
+  ARRAY_DIM = "ARRAY_DIM",
 }
 
 return {

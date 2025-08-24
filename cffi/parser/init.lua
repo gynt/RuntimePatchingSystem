@@ -1,9 +1,12 @@
 
 local TOKEN_TYPES = require("cffi.parser.tokens").TOKEN_TYPES
-local ParseState = require("cffi.parser.state")
+local ParseState = require("cffi.parser.lexer")
+local namespace = require("cffi.namespace")
+local GLOBAL = namespace.GLOBAL
 local Struct = require("cffi.model.struct")
 
-local struct = require("cffi.parser.struct")
+---@class StackElement
+---@field type string
 
 ---@class Parser
 local Parser = {}
@@ -30,37 +33,173 @@ function Parser:tokens(str)
   return tokens
 end
 
+function Parser:_next_token()
+  self.state.index = self.state.index + 1
+  return self.state.tokens[self.state.index]
+end
+
+function Parser:_peek_next_token(which)
+  return self.state.tokens[self.state.index + (which or 1)]
+end
+
+local TYPE_EXTENDERS = {
+  ["unsigned"] = true,
+  ["union"] = true,
+  ["struct"] = true,
+  ["enum"] = true,
+}
+
+function Parser:_parse_struct()
+  local stack = self.state.stack
+  local struct = {
+    type = "struct",
+    fields = {},
+  }
+  local stackPosition = table.insert(stack, struct)
+
+  local tokenName = self:_next_token()
+  if tokenName.type == TOKEN_TYPES.CHARACTER and tokenName.data == "{" then
+    error("anonymous structs are not implemented")
+  end
+
+  if tokenName.type ~= TOKEN_TYPES.SYMBOL then
+    error(string.format("expected symbol but received: %s (%s)", tokenName.data, tokenName.type))
+  end
+
+  struct.name = tokenName.data
+  
+  local curlyBraceOpen = self:_next_token()
+  if curlyBraceOpen.type ~= TOKEN_TYPES.CHARACTER or curlyBraceOpen.data ~= "{" then
+    error(string.format("expected '{' but received: %s (%s)", tokenName.data, tokenName.type))
+  end
+
+  local fieldCounter = 0
+  local nextToken = self:_next_token()
+  while nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "}" do
+    fieldCounter = fieldCounter + 1
+
+    local field = {}
+    table.insert(struct.fields, field)
+    
+    local typeNameToken = nextToken
+    if typeNameToken.type ~= TOKEN_TYPES.SYMBOL then
+      error(string.format("expected a symbol but received: %s", typeNameToken.data))
+    end
+
+    if TYPE_EXTENDERS[typeNameToken.data] == true then
+      field.typeName = typeNameToken.data
+      local typeNameToken2 = self:_next_token()
+      if typeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
+        error(string.format("expected a symbol but received: %s", typeNameToken2.data))
+      end
+      field.typeName = field.typeName .. " " .. typeNameToken2.data
+    else
+      field.typeName = typeNameToken.data
+    end
+
+    field.pointers = 0
+    nextToken = self:_next_token()
+    while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
+      field.pointers = field.pointers + 1
+      nextToken = self:_next_token()
+    end
+
+    local fieldNameToken = nextToken
+    if fieldNameToken.type ~= TOKEN_TYPES.SYMBOL then
+      error("expected fieldname but received: ")
+    end
+    field.fieldName = fieldNameToken.data
+
+    nextToken = self:_next_token()
+    while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
+      if field.array_dim == nil then field.array_dim = {} end
+      table.insert(field.array_dim, nextToken.data)
+      nextToken = self:_next_token()
+    end
+
+    local colonToken = nextToken
+    if colonToken.type ~= TOKEN_TYPES.CHARACTER or colonToken.data ~= ";" then
+      error(string.format("expected ';' but received: %s", colonToken.data))
+    end
+
+    nextToken = self:_next_token()
+  end
+
+  if nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "}" then
+    table.remove(self.state.stack, stackPosition)
+  else
+    error("unfinished struct")
+  end
+
+  return struct
+end
+
+function Parser:_parse_typedef()
+  local typedef = {
+    type = "typedef",
+    typed = nil,
+    name = nil,
+  }
+
+  local nextToken = self:_peek_next_token()
+
+  if nextToken.type == TOKEN_TYPES.STRUCT then
+    local struct = self:_parse_struct()
+    typedef.typed = struct
+  else
+    error("not implemented")
+  end
+
+  local typeDefNameToken = self:_peek_next_token() -- assuming struct did already increment
+  if typeDefNameToken.type ~= TOKEN_TYPES.SYMBOL then error() end
+  typedef.name = typeDefNameToken.data
+
+  local finishToken = self:_next_token()
+  if finishToken.type ~= TOKEN_TYPES.CHARACTER or finishToken.data ~= '}' then
+    error("expected end of typedef")
+  end
+
+  return typedef
+end
+
 function Parser:interpret_tokens(tokens)
+  local interpretation = {
+    names = {}, -- new names
+    elements = {},
+  }
   self.state = {
     tokens = tokens,
     stack = {},
+    index = 0, -- uninitialized
+    interpretation = interpretation,
   }
   local state = self.state
+  ---@type table<StackElement>
   local stack = state.stack
 
-  for _, token in ipairs(tokens) do
+  while state.index <= #tokens do
+    local token = self:_next_token() -- first time selects 1
+    if token == nil then break end
+
     ---@type BaseType
     local current = stack[#stack]
     if token.type == TOKEN_TYPES.TYPEDEF then
       if #self.state.stack > 0 then 
-        error("typedef must be start of statement")
+        error("typedef must be defined in the root of the document")
       end
+
+      local typedef = self:_parse_typedef()      
+      table.insert(interpretation.elements, typedef)
 
     elseif token.type == TOKEN_TYPES.STRUCT then
-      table.insert(stack, struct.StructPartHeader:init(nil))
-    elseif token.type == TOKEN_TYPES.SYMBOL then
-      if current ~= nil then
-        if current:isInstance(struct.StructPartHeader) then
-          current.name = token.data
-        elseif current:isInstance(struct.StructPartBody) then
-        elseif current:isInstance(struct.StructPartField) then
+      local struct = self:_parse_struct()
+      table.insert(interpretation.elements, struct)
 
-        end
-      end
+    elseif token.type == TOKEN_TYPES.SYMBOL then
     end
   end
 
-  return stack
+  return interpretation
 end
 
 function Parser:parse(text)
