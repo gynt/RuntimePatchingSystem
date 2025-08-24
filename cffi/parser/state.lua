@@ -1,14 +1,6 @@
 local GLOBAL_OPTIONS = require("cffi.options")
 
----@enum TOKEN_TYPES
-local TOKEN_TYPES = {
-  NONE = "NONE",
-  DOUBLE_QUOTED_STRING = "DOUBLE_QUOTED_STRING",
-  SINGLE_QUOTED_STRING = "SINGLE_QUOTED_STRING",
-  LONG = "LONG",
-  INTEGER = "INTEGER",
-  HEXADECIMAL = "HEXADECIMAL",
-}
+local TOKEN_TYPES = require("cffi.parser.tokens").TOKEN_TYPES
 
 ---@class ParseState
 ---@field doubleQuoteLevel integer
@@ -127,6 +119,11 @@ function ParseState:token()
        return 1
     end
 
+    local whitespaceIndex, whiteSpaceLength = slice:find("[%s+]")
+    if whitespaceIndex == 1 then
+      return whiteSpaceLength
+    end
+
     if self:next(2) == "0x" then
       local hexIndex, hexLength, hex = slice:find("([A-Fa-f0-9]+)", 3)
       if hexIndex ~= 3 then
@@ -156,6 +153,40 @@ function ParseState:token()
       end
     end
 
+    local wordIndex, wordLength, word = slice:find("([_%w%[%]]+)")
+    if wordIndex == 1 then
+      if word == "struct" then
+        return wordLength, {
+          type = TOKEN_TYPES.STRUCT,
+          data = word,
+        }
+      elseif word == "typedef" then
+        return wordLength, {
+          type = TOKEN_TYPES.TYPEDEF,
+          data = word,
+        }
+      elseif word == "enum" then
+        return wordLength, {
+          type = TOKEN_TYPES.ENUM,
+          data = word,
+        }
+      elseif word == "union" then
+        return wordLength, {
+          type = TOKEN_TYPES.UNION,
+          data = word,
+        }
+      else
+        return wordLength, {
+          type = TOKEN_TYPES.SYMBOL,
+          data = word,
+        }
+      end
+    end
+
+    return 1, {
+      type = TOKEN_TYPES.CHARACTER,
+      data = character,
+    }
   end
 
   error(string.format("unhandled character: %s", character))

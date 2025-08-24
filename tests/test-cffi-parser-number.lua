@@ -5,7 +5,7 @@ local test_cffi_parser_number = {}
 function test_cffi_parser_number.test_integer()
   local cffi = require("cffi")      
   local parser = cffi.Parser:init()
-  local tokens = parser:parse('9032320')
+  local tokens = parser:tokens('9032320')
 
   lunatest.assert_equal(1, #tokens, 0)
 
@@ -18,7 +18,7 @@ end
 function test_cffi_parser_number.test_integer_hexadecimal()
   local cffi = require("cffi")      
   local parser = cffi.Parser:init()
-  local tokens = parser:parse("0xDEADBEED")
+  local tokens = parser:tokens("0xDEADBEED")
 
   lunatest.assert_equal(1, #tokens, 0)
 
@@ -31,7 +31,7 @@ end
 function test_cffi_parser_number.test_float()
   local cffi = require("cffi")      
   local parser = cffi.Parser:init()
-  local tokens = parser:parse("'Hello world!'")
+  local tokens = parser:tokens("'Hello world!'")
 
   lunatest.assert_equal(1, #tokens, 0)
 
@@ -44,7 +44,7 @@ end
 function test_cffi_parser_number.test_long()
   local cffi = require("cffi")      
   local parser = cffi.Parser:init()
-  local tokens = parser:parse("100L")
+  local tokens = parser:tokens("100L")
 
   lunatest.assert_equal(1, #tokens, 0)
 
