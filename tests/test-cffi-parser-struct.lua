@@ -5,6 +5,7 @@ local test_cffi_parser_struct = {}
 
 function test_cffi_parser_struct.test_struct()
   local cffi = require("cffi")      
+  cffi.options.VERBOSE = false
   local parser = cffi.Parser:init()
   local tokens = parser:tokens([[
     struct A {
@@ -23,7 +24,7 @@ function test_cffi_parser_struct.test_struct()
   lunatest.assert_equal([[
 TOKEN: type 'STRUCT', data: struct
 TOKEN: type 'SYMBOL', data: A
-TOKEN: type 'CHARACTER', data: {
+TOKEN: type 'CURLY_BRACKET_OPEN', data: {
 TOKEN: type 'SYMBOL', data: int
 TOKEN: type 'SYMBOL', data: a
 TOKEN: type 'CHARACTER', data: ;
@@ -35,14 +36,15 @@ TOKEN: type 'SYMBOL', data: unsigned
 TOKEN: type 'SYMBOL', data: long
 TOKEN: type 'SYMBOL', data: address
 TOKEN: type 'CHARACTER', data: ;
-TOKEN: type 'CHARACTER', data: }
+TOKEN: type 'CURLY_BRACKET_CLOSE', data: }
 TOKEN: type 'CHARACTER', data: ;
 ]], result)
 end
 
 
 function test_cffi_parser_struct.test_typedef_struct()
-  local cffi = require("cffi")      
+  local cffi = require("cffi")  
+  cffi.options.VERBOSE = false    
   local parser = cffi.Parser:init()
   local tokens = parser:tokens([[
     typedef struct _A {
@@ -64,7 +66,7 @@ function test_cffi_parser_struct.test_typedef_struct()
 TOKEN: type 'TYPEDEF', data: typedef
 TOKEN: type 'STRUCT', data: struct
 TOKEN: type 'SYMBOL', data: _A
-TOKEN: type 'CHARACTER', data: {
+TOKEN: type 'CURLY_BRACKET_OPEN', data: {
 TOKEN: type 'SYMBOL', data: int
 TOKEN: type 'SYMBOL', data: a
 TOKEN: type 'CHARACTER', data: ;
@@ -86,7 +88,7 @@ TOKEN: type 'SYMBOL', data: long
 TOKEN: type 'CHARACTER', data: *
 TOKEN: type 'SYMBOL', data: pointer
 TOKEN: type 'CHARACTER', data: ;
-TOKEN: type 'CHARACTER', data: }
+TOKEN: type 'CURLY_BRACKET_CLOSE', data: }
 TOKEN: type 'SYMBOL', data: B__
 TOKEN: type 'CHARACTER', data: ;
 ]], result)

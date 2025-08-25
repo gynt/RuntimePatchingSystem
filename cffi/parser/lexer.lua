@@ -49,7 +49,7 @@ end
 
 function ParseState:increment(count)
   if GLOBAL_OPTIONS.VERBOSE == true then
-    print(string.format("increment(%s): from %s to %s", count, self.index, self.index + (count or 1)))
+    -- print(string.format("increment(%s): from %s to %s", count, self.index, self.index + (count or 1)))
   end
 
   self.index = self.index + (count or 1)
@@ -119,6 +119,28 @@ function ParseState:token()
     if self.singleQuoteLevel > 0 or self.doubleQuoteLevel > 0 then
        token.data = token.data .. character
        return 1
+    end
+
+    if character == "{" then
+      return 1, {
+        type = TOKEN_TYPES.CURLY_BRACKET_OPEN,
+        data = "{",
+      }
+    elseif character == "}" then
+      return 1, {
+        type = TOKEN_TYPES.CURLY_BRACKET_CLOSE,
+        data = "}",
+      }
+    elseif character == "(" then
+      return 1, {
+        type = TOKEN_TYPES.PARENTHESIS_OPEN,
+        data = "(",
+      }
+    elseif character == ")" then
+      return 1, {
+        type = TOKEN_TYPES.PARENTHESIS_CLOSE,
+        data = ")",
+      }
     end
 
     local whitespaceIndex, whiteSpaceLength = slice:find("[%s+]")

@@ -4,6 +4,7 @@ local ParseState = require("cffi.parser.lexer")
 local namespace = require("cffi.namespace")
 local GLOBAL = namespace.GLOBAL
 local Struct = require("cffi.model.struct")
+local options = require("cffi.options")
 
 ---@class StackElement
 ---@field type string
@@ -49,7 +50,146 @@ local TYPE_EXTENDERS = {
   ["enum"] = true,
 }
 
-function Parser:_parse_struct()
+function Parser:_parse_type_info()
+  local info = {}
+
+  local fieldTypeNameToken = self:_next_token()
+  if fieldTypeNameToken.type ~= TOKEN_TYPES.SYMBOL then
+    error(string.format("expected a symbol but received: %s", fieldTypeNameToken.data))
+  end
+
+  if TYPE_EXTENDERS[fieldTypeNameToken.data] == true then
+    info.name = fieldTypeNameToken.data
+    local fieldTypeNameToken2 = self:_next_token()
+    if fieldTypeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
+      error(string.format("expected a symbol but received: %s", fieldTypeNameToken2.data))
+    end
+    info.name = info.name .. " " .. fieldTypeNameToken2.data
+  else
+    info.name = fieldTypeNameToken.data
+  end
+
+  info.pointers = 0
+  local nextToken = self:_peek_next_token()
+  while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
+    info.pointers = info.pointers + 1
+    nextToken = self:_next_token()
+    nextToken = self:_peek_next_token()
+  end
+
+  return info
+end
+
+function Parser:_parse_field_function_pointer(field)
+  
+  local nextToken = self:_next_token()
+  if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
+    error("expected '('")
+  end
+
+  local nextToken = self:_next_token()
+  if nextToken.type == TOKEN_TYPES.SYMBOL then
+    field.callingConvention = nextToken.data
+    nextToken = self:_next_token()
+  end
+
+  if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "*" then
+    error("expected '*'")
+  end
+
+  while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
+    if field.fpointers == nil then field.fpointers = 0 end
+    field.fpointers = field.fpointers + 1
+    nextToken = self:_next_token()
+  end
+
+  if nextToken.type == TOKEN_TYPES.SYMBOL then
+    field.fieldName = nextToken.data
+  end
+
+  nextToken = self:_next_token()
+  if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_CLOSE then
+    error(string.format("expected ')' but received: %s", nextToken.data))
+  end
+
+  local nextToken = self:_next_token()
+  if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
+    error("expected '('")
+  end
+
+  field.arguments = {}
+  nextToken = self:_next_token()
+  while nextToken.type ~= TOKEN_TYPES.PARENTHESIS_CLOSE do
+    local argument = {}
+    table.insert(field.arguments, argument)
+
+    argument.typeInfo = self:_parse_type_info()
+    nextToken = self:_next_token()
+    if nextToken.type == TOKEN_TYPES.SYMBOL then
+      argument.name = nextToken.data
+      nextToken = self:_next_token()
+    end
+
+    if nextToken.type == TOKEN_TYPES.PARENTHESIS_CLOSE then
+      break
+    end
+    if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "," then
+      -- do nothing
+      error()
+    end
+  end
+
+  local finalToken = self:_next_token()
+  if finalToken.type ~= TOKEN_TYPES.CHARACTER or finalToken.data ~= ";" then
+    error("expected ';'")
+  end
+
+  return field
+end
+
+function Parser:_parse_field_data(field)
+  local nextToken = self:_next_token()
+
+  local fieldNameToken = nextToken
+  if fieldNameToken.type ~= TOKEN_TYPES.SYMBOL then
+    error("expected fieldname but received: ")
+  end
+  field.fieldName = fieldNameToken.data
+
+  nextToken = self:_next_token()
+  while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
+    if field.array_dim == nil then field.array_dim = {} end
+    table.insert(field.array_dim, nextToken.data)
+    nextToken = self:_next_token()
+  end
+
+  local colonToken = nextToken
+  if colonToken.type ~= TOKEN_TYPES.CHARACTER or colonToken.data ~= ";" then
+    error(string.format("expected ';' but received: %s", colonToken.data))
+  end
+
+  return field
+end
+
+function Parser:_parse_field()
+  local field = {}
+  
+  local typeInfo = self:_parse_type_info()
+  field.typeInfo = typeInfo
+
+  if self:_peek_next_token(1).type == TOKEN_TYPES.PARENTHESIS_OPEN then
+    return self:_parse_field_function_pointer(field)
+  end
+
+  return Parser:_parse_field_data(field)
+end
+
+---@class _parse_struct_Params
+---@field start "struct"|"name"
+
+---@param params _parse_struct_Params
+function Parser:_parse_struct(params)
+  params = params or {start = "name"}
   local stack = self.state.stack
   local struct = {
     type = "struct",
@@ -57,8 +197,11 @@ function Parser:_parse_struct()
   }
   local stackPosition = table.insert(stack, struct)
 
+  if params.start == "struct" then 
+    if self:_next_token().type ~= TOKEN_TYPES.STRUCT then error("not a struct") end
+  end
   local tokenName = self:_next_token()
-  if tokenName.type == TOKEN_TYPES.CHARACTER and tokenName.data == "{" then
+  if tokenName.type == TOKEN_TYPES.CURLY_BRACKET_OPEN then
     error("anonymous structs are not implemented")
   end
 
@@ -69,32 +212,32 @@ function Parser:_parse_struct()
   struct.name = tokenName.data
   
   local curlyBraceOpen = self:_next_token()
-  if curlyBraceOpen.type ~= TOKEN_TYPES.CHARACTER or curlyBraceOpen.data ~= "{" then
+  if curlyBraceOpen.type ~= TOKEN_TYPES.CURLY_BRACKET_OPEN then
     error(string.format("expected '{' but received: %s (%s)", tokenName.data, tokenName.type))
   end
 
   local fieldCounter = 0
   local nextToken = self:_next_token()
-  while nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "}" do
+  while nextToken.type ~= TOKEN_TYPES.CURLY_BRACKET_CLOSE do
     fieldCounter = fieldCounter + 1
 
     local field = {}
     table.insert(struct.fields, field)
     
-    local typeNameToken = nextToken
-    if typeNameToken.type ~= TOKEN_TYPES.SYMBOL then
-      error(string.format("expected a symbol but received: %s", typeNameToken.data))
+    local fieldTypeNameToken = nextToken
+    if fieldTypeNameToken.type ~= TOKEN_TYPES.SYMBOL then
+      error(string.format("expected a symbol but received: %s", fieldTypeNameToken.data))
     end
 
-    if TYPE_EXTENDERS[typeNameToken.data] == true then
-      field.typeName = typeNameToken.data
-      local typeNameToken2 = self:_next_token()
-      if typeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
-        error(string.format("expected a symbol but received: %s", typeNameToken2.data))
+    if TYPE_EXTENDERS[fieldTypeNameToken.data] == true then
+      field.fieldTypeName = fieldTypeNameToken.data
+      local fieldTypeNameToken2 = self:_next_token()
+      if fieldTypeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
+        error(string.format("expected a symbol but received: %s", fieldTypeNameToken2.data))
       end
-      field.typeName = field.typeName .. " " .. typeNameToken2.data
+      field.fieldTypeName = field.fieldTypeName .. " " .. fieldTypeNameToken2.data
     else
-      field.typeName = typeNameToken.data
+      field.fieldTypeName = fieldTypeNameToken.data
     end
 
     field.pointers = 0
@@ -125,7 +268,7 @@ function Parser:_parse_struct()
     nextToken = self:_next_token()
   end
 
-  if nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "}" then
+  if nextToken.type == TOKEN_TYPES.CURLY_BRACKET_CLOSE then
     table.remove(self.state.stack, stackPosition)
   else
     error("unfinished struct")
@@ -143,20 +286,24 @@ function Parser:_parse_typedef()
 
   local nextToken = self:_peek_next_token()
 
+  if options.VERBOSE then
+    print(string.format("nextToken: %s", nextToken.type))
+  end
+
   if nextToken.type == TOKEN_TYPES.STRUCT then
-    local struct = self:_parse_struct()
+    local struct = self:_parse_struct({start = "struct"})
     typedef.typed = struct
   else
     error("not implemented")
   end
 
-  local typeDefNameToken = self:_peek_next_token() -- assuming struct did already increment
-  if typeDefNameToken.type ~= TOKEN_TYPES.SYMBOL then error() end
+  local typeDefNameToken = self:_next_token()
+  if typeDefNameToken.type ~= TOKEN_TYPES.SYMBOL then error(typeDefNameToken.data) end
   typedef.name = typeDefNameToken.data
 
   local finishToken = self:_next_token()
-  if finishToken.type ~= TOKEN_TYPES.CHARACTER or finishToken.data ~= '}' then
-    error("expected end of typedef")
+  if finishToken.type ~= TOKEN_TYPES.CHARACTER or finishToken.data ~= ';' then
+    error(string.format("expected end of typedef, not: %s", finishToken.data))
   end
 
   return typedef
@@ -188,6 +335,10 @@ function Parser:interpret_tokens(tokens)
         error("typedef must be defined in the root of the document")
       end
 
+      if options.VERBOSE then
+        print(string.format("typedef: %s", token.type))
+      end
+
       local typedef = self:_parse_typedef()      
       table.insert(interpretation.elements, typedef)
 
@@ -196,6 +347,12 @@ function Parser:interpret_tokens(tokens)
       table.insert(interpretation.elements, struct)
 
     elseif token.type == TOKEN_TYPES.SYMBOL then
+      state.index = state.index - 1
+      local o = {}
+      local typeInfo = self:_parse_type_info()
+      o.typeInfo = typeInfo
+      local functionPointer = self:_parse_field_function_pointer(o)
+      table.insert(interpretation.elements, o)
     end
   end
 

@@ -1,7 +1,9 @@
 local lunatest = require('tests.lunatest.lunatest')
 local rps = require("RPS")
 
+lunatest.suite('tests.test-cffi-interpret-function-pointer')
 lunatest.suite('tests.test-cffi-interpret-struct')
+lunatest.suite('tests.test-cffi-parser-function')
 lunatest.suite('tests.test-cffi-parser-number')
 lunatest.suite('tests.test-cffi-parser-string')
 lunatest.suite('tests.test-cffi-parser-struct')
