@@ -17,7 +17,7 @@ function test_cffi_interpret_function_pointer.test_function_pointer()
   lunatest.assert_equal(2, #result, 0)
   lunatest.assert_equal("void", result[1].typeInfo.name)
   lunatest.assert_equal(1, result[1].fpointers)
-  lunatest.assert_equal("f", result[1].fieldName)
+  lunatest.assert_equal("f", result[1].name)
   lunatest.assert_equal("__thiscall", result[1].callingConvention)
 
   lunatest.assert_equal(2, #result[1].arguments)

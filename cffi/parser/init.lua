@@ -104,7 +104,7 @@ function Parser:_parse_field_function_pointer(field)
   end
 
   if nextToken.type == TOKEN_TYPES.SYMBOL then
-    field.fieldName = nextToken.data
+    field.name = nextToken.data
   end
 
   nextToken = self:_next_token()
@@ -150,11 +150,11 @@ end
 function Parser:_parse_field_data(field)
   local nextToken = self:_next_token()
 
-  local fieldNameToken = nextToken
-  if fieldNameToken.type ~= TOKEN_TYPES.SYMBOL then
+  local nameToken = nextToken
+  if nameToken.type ~= TOKEN_TYPES.SYMBOL then
     error("expected fieldname but received: ")
   end
-  field.fieldName = fieldNameToken.data
+  field.name = nameToken.data
 
   nextToken = self:_next_token()
   while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
@@ -247,11 +247,11 @@ function Parser:_parse_struct(params)
       nextToken = self:_next_token()
     end
 
-    local fieldNameToken = nextToken
-    if fieldNameToken.type ~= TOKEN_TYPES.SYMBOL then
+    local nameToken = nextToken
+    if nameToken.type ~= TOKEN_TYPES.SYMBOL then
       error("expected fieldname but received: ")
     end
-    field.fieldName = fieldNameToken.data
+    field.name = nameToken.data
 
     nextToken = self:_next_token()
     while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
