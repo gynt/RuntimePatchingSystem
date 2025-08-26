@@ -26,6 +26,16 @@ function Parser:init(options)
   return o
 end
 
+local FMT_STRING_PARSE_ERROR_EXPECT = "expected %s but received %s: '%s'"
+
+function Parser:raise_parse_error(fmt, ...)
+  print(string.format("index: %s", self.state.index))
+  for _, token in ipairs(self.state.tokens) do
+    print(string.format("%s %s %s", _, token.type, token.data)) 
+  end
+  error(string.format(fmt, ...))
+end
+
 function Parser:tokens(str)
   self.lex = ParseState:init({text = str})
 
@@ -34,6 +44,8 @@ function Parser:tokens(str)
   return tokens
 end
 
+
+
 function Parser:_next_token()
   self.state.index = self.state.index + 1
   return self.state.tokens[self.state.index]
@@ -41,6 +53,10 @@ end
 
 function Parser:_peek_next_token(which)
   return self.state.tokens[self.state.index + (which or 1)]
+end
+
+function Parser:_current_token()
+  return self:_peek_next_token(0)
 end
 
 local TYPE_EXTENDERS = {
@@ -53,120 +69,146 @@ local TYPE_EXTENDERS = {
 function Parser:_parse_type_info()
   local info = {}
 
-  local fieldTypeNameToken = self:_next_token()
+  -- unsigned int **
+
+  local fieldTypeNameToken = self:_current_token() -- unsigned
   if fieldTypeNameToken.type ~= TOKEN_TYPES.SYMBOL then
-    error(string.format("expected a symbol but received: %s", fieldTypeNameToken.data))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.SYMBOL, fieldTypeNameToken.type, fieldTypeNameToken.data)
   end
 
   if TYPE_EXTENDERS[fieldTypeNameToken.data] == true then
-    info.name = fieldTypeNameToken.data
-    local fieldTypeNameToken2 = self:_next_token()
+    info.name = fieldTypeNameToken.data -- unsigned
+    local fieldTypeNameToken2 = self:_next_token() -- int
     if fieldTypeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
-      error(string.format("expected a symbol but received: %s", fieldTypeNameToken2.data))
+      self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.SYMBOL, fieldTypeNameToken2.type, fieldTypeNameToken2.data)
     end
-    info.name = info.name .. " " .. fieldTypeNameToken2.data
+    info.name = info.name .. " " .. fieldTypeNameToken2.data -- unsigned int
   else
     info.name = fieldTypeNameToken.data
   end
 
   info.pointers = 0
-  local nextToken = self:_peek_next_token()
+  local nextToken = self:_next_token() -- *
   while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
     info.pointers = info.pointers + 1
-    nextToken = self:_next_token()
-    nextToken = self:_peek_next_token()
+    
+    -- nextToken = self:_peek_next_token() -- *, second round: a
+    -- if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "*" then
+    --   break
+    -- end
+    nextToken = self:_next_token() -- *
   end
 
   return info
 end
 
+function Parser:_previous_token()
+  self.state.index = self.state.index - 1
+  return self:_current_token()
+end
+
 function Parser:_parse_field_function_pointer(field)
-  
-  local nextToken = self:_next_token()
-  if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
-    error("expected '('")
+  -- void (__thiscall * f)(int a, unsigned char * b);
+  local parenthesisToken = self:_current_token() -- (
+  if parenthesisToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.PARENTHESIS_OPEN, parenthesisToken.type, parenthesisToken.data)
   end
 
-  local nextToken = self:_next_token()
+  local nextToken = self:_next_token() -- __thiscall
   if nextToken.type == TOKEN_TYPES.SYMBOL then
     field.callingConvention = nextToken.data
-    nextToken = self:_next_token()
+    nextToken = self:_next_token() -- *
   end
 
+  -- *
   if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "*" then
-    error("expected '*'")
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "'*'", nextToken.type, nextToken.data)
   end
 
+  -- *
   while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
     if field.fpointers == nil then field.fpointers = 0 end
     field.fpointers = field.fpointers + 1
-    nextToken = self:_next_token()
+    nextToken = self:_next_token() -- f
   end
 
+  -- f
   if nextToken.type == TOKEN_TYPES.SYMBOL then
     field.name = nextToken.data
   end
 
-  nextToken = self:_next_token()
+  nextToken = self:_next_token() -- )
   if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_CLOSE then
-    error(string.format("expected ')' but received: %s", nextToken.data))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.PARENTHESIS_CLOSE, nextToken.type, nextToken.data)
   end
 
-  local nextToken = self:_next_token()
+  local nextToken = self:_next_token() -- (
   if nextToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
-    error("expected '('")
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.PARENTHESIS_OPEN, nextToken.type, nextToken.data)
   end
 
   field.arguments = {}
-  nextToken = self:_next_token()
-  while nextToken.type ~= TOKEN_TYPES.PARENTHESIS_CLOSE do
+  nextToken = self:_next_token() -- int
+  while self:_current_token().type ~= TOKEN_TYPES.PARENTHESIS_CLOSE do
     local argument = {}
     table.insert(field.arguments, argument)
 
-    argument.typeInfo = self:_parse_type_info()
-    nextToken = self:_next_token()
+    argument.typeInfo = self:_parse_type_info() -- a
+    nextToken = self:_current_token() -- a
     if nextToken.type == TOKEN_TYPES.SYMBOL then
-      argument.name = nextToken.data
-      nextToken = self:_next_token()
-    end
-
-    if nextToken.type == TOKEN_TYPES.PARENTHESIS_CLOSE then
+      argument.name = nextToken.data -- a
+      nextToken = self:_next_token() -- , or )
+      if nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "," then
+        self:_next_token() -- consume comma
+      elseif nextToken.type == TOKEN_TYPES.PARENTHESIS_CLOSE then
+        self:_next_token() -- consume parenthesis close
+        break
+      else
+        self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "',' or ')'", nextToken.type, nextToken.data)
+      end
+    elseif nextToken.type == TOKEN_TYPES.PARENTHESIS_CLOSE then
+      self:_next_token() -- consume parenthesis close
       break
+    elseif nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "," then
+      self:_next_token() -- consume comma
+    else
+      self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "','", nextToken.type, nextToken.data)
     end
-    if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= "," then
-      -- do nothing
-      error()
-    end
+    
   end
 
-  local finalToken = self:_next_token()
+  local finalToken = self:_current_token()
   if finalToken.type ~= TOKEN_TYPES.CHARACTER or finalToken.data ~= ";" then
-    error("expected ';'")
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "';'", finalToken.type, finalToken.data)
   end
+
+  self:_next_token() -- consume ;
 
   return field
 end
 
 function Parser:_parse_field_data(field)
-  local nextToken = self:_next_token()
+  -- unsigned int ** a[100][200];
+  local nameToken = self:_current_token() -- a
 
-  local nameToken = nextToken
   if nameToken.type ~= TOKEN_TYPES.SYMBOL then
-    error("expected fieldname but received: ")
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.SYMBOL, nameToken.type, nameToken.data)
   end
   field.name = nameToken.data
 
-  nextToken = self:_next_token()
+  local nextToken = self:_next_token() -- [100]
   while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
-    if field.array_dim == nil then field.array_dim = {} end
-    table.insert(field.array_dim, nextToken.data)
-    nextToken = self:_next_token()
+    if field.typeInfo.array_dim == nil then field.typeInfo.array_dim = {} end
+    table.insert(field.typeInfo.array_dim, nextToken.data)
+    nextToken = self:_next_token() -- [200] / ;
   end
 
   local colonToken = nextToken
   if colonToken.type ~= TOKEN_TYPES.CHARACTER or colonToken.data ~= ";" then
-    error(string.format("expected ';' but received: %s", colonToken.data))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "';'", colonToken.type, colonToken.data)
   end
+
+  self:_next_token() -- ?
 
   return field
 end
@@ -174,22 +216,25 @@ end
 function Parser:_parse_field()
   local field = {}
   
-  local typeInfo = self:_parse_type_info()
-  field.typeInfo = typeInfo
+  field.typeInfo = self:_parse_type_info()
 
-  if self:_peek_next_token(1).type == TOKEN_TYPES.PARENTHESIS_OPEN then
+  if self:_current_token().type == TOKEN_TYPES.PARENTHESIS_OPEN then
     return self:_parse_field_function_pointer(field)
   end
 
-  return Parser:_parse_field_data(field)
+  return self:_parse_field_data(field)
 end
 
 ---@class _parse_struct_Params
 ---@field start "struct"|"name"
 
----@param params _parse_struct_Params
-function Parser:_parse_struct(params)
-  params = params or {start = "name"}
+function Parser:_parse_struct()
+  -- struct A { unsigned int ** a[100][200]; };
+  local structToken = self:_current_token() -- struct
+  if structToken.type ~= TOKEN_TYPES.STRUCT then
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.STRUCT, structToken.type, structToken.data)
+  end
+
   local stack = self.state.stack
   local struct = {
     type = "struct",
@@ -197,114 +242,93 @@ function Parser:_parse_struct(params)
   }
   local stackPosition = table.insert(stack, struct)
 
-  if params.start == "struct" then 
-    if self:_next_token().type ~= TOKEN_TYPES.STRUCT then error("not a struct") end
-  end
-  local tokenName = self:_next_token()
+  local tokenName = self:_next_token() -- A
   if tokenName.type == TOKEN_TYPES.CURLY_BRACKET_OPEN then
     error("anonymous structs are not implemented")
   end
 
   if tokenName.type ~= TOKEN_TYPES.SYMBOL then
-    error(string.format("expected symbol but received: %s (%s)", tokenName.data, tokenName.type))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.SYMBOL, tokenName.data, tokenName.type)
   end
 
   struct.name = tokenName.data
   
-  local curlyBraceOpen = self:_next_token()
+  local curlyBraceOpen = self:_next_token() -- {
   if curlyBraceOpen.type ~= TOKEN_TYPES.CURLY_BRACKET_OPEN then
-    error(string.format("expected '{' but received: %s (%s)", tokenName.data, tokenName.type))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.CURLY_BRACKET_OPEN, curlyBraceOpen.data, curlyBraceOpen.type)
   end
 
   local fieldCounter = 0
-  local nextToken = self:_next_token()
-  while nextToken.type ~= TOKEN_TYPES.CURLY_BRACKET_CLOSE do
+  local nextToken = self:_next_token() -- unsigned
+  while self:_current_token().type ~= TOKEN_TYPES.CURLY_BRACKET_CLOSE do
     fieldCounter = fieldCounter + 1
 
-    local field = {}
+    local field = self:_parse_field() -- }
     table.insert(struct.fields, field)
     
-    local fieldTypeNameToken = nextToken
-    if fieldTypeNameToken.type ~= TOKEN_TYPES.SYMBOL then
-      error(string.format("expected a symbol but received: %s", fieldTypeNameToken.data))
-    end
-
-    if TYPE_EXTENDERS[fieldTypeNameToken.data] == true then
-      field.fieldTypeName = fieldTypeNameToken.data
-      local fieldTypeNameToken2 = self:_next_token()
-      if fieldTypeNameToken2.type ~= TOKEN_TYPES.SYMBOL then
-        error(string.format("expected a symbol but received: %s", fieldTypeNameToken2.data))
-      end
-      field.fieldTypeName = field.fieldTypeName .. " " .. fieldTypeNameToken2.data
-    else
-      field.fieldTypeName = fieldTypeNameToken.data
-    end
-
-    field.pointers = 0
-    nextToken = self:_next_token()
-    while nextToken.type == TOKEN_TYPES.CHARACTER and nextToken.data == "*" do
-      field.pointers = field.pointers + 1
-      nextToken = self:_next_token()
-    end
-
-    local nameToken = nextToken
-    if nameToken.type ~= TOKEN_TYPES.SYMBOL then
-      error("expected fieldname but received: ")
-    end
-    field.name = nameToken.data
-
-    nextToken = self:_next_token()
-    while nextToken.type == TOKEN_TYPES.ARRAY_DIM do
-      if field.array_dim == nil then field.array_dim = {} end
-      table.insert(field.array_dim, nextToken.data)
-      nextToken = self:_next_token()
-    end
-
-    local colonToken = nextToken
-    if colonToken.type ~= TOKEN_TYPES.CHARACTER or colonToken.data ~= ";" then
-      error(string.format("expected ';' but received: %s", colonToken.data))
-    end
-
-    nextToken = self:_next_token()
   end
 
-  if nextToken.type == TOKEN_TYPES.CURLY_BRACKET_CLOSE then
+  local curlyBracketCloseToken = self:_current_token() -- }
+  if curlyBracketCloseToken.type == TOKEN_TYPES.CURLY_BRACKET_CLOSE then
+    nextToken = self:_next_token() -- consume the bracket: ?
     table.remove(self.state.stack, stackPosition)
   else
     error("unfinished struct")
   end
 
+  if nextToken.type == TOKEN_TYPES.SYMBOL then
+    -- leave this for a typedef parser...
+    if self:_peek_next_token().type ~= TOKEN_TYPES.CHARACTER or self:_peek_next_token().data ~= ";" then
+      error()
+    end
+  else
+    if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= ";" then
+      error()
+    end
+    self:_next_token() -- consume the ';'
+  end
+
+  -- if nextToken.type ~= TOKEN_TYPES.CHARACTER or nextToken.data ~= ";" then
+  --   self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "';'", nextToken.type, nextToken.data)
+  -- end
+
+  -- self:_next_token() -- ?
+
   return struct
 end
 
 function Parser:_parse_typedef()
+  -- typedef struct A {unsigned int ** a[100];} _B;
+  local typedefToken = self:_current_token() -- typedef
+  if typedefToken.type ~= TOKEN_TYPES.TYPEDEF then
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, TOKEN_TYPES.TYPEDEF, typedefToken.type, typedefToken.data)
+  end
+
   local typedef = {
     type = "typedef",
     typed = nil,
     name = nil,
   }
 
-  local nextToken = self:_peek_next_token()
-
-  if options.VERBOSE then
-    print(string.format("nextToken: %s", nextToken.type))
-  end
+  local nextToken = self:_next_token() -- struct
 
   if nextToken.type == TOKEN_TYPES.STRUCT then
-    local struct = self:_parse_struct({start = "struct"})
+    local struct = self:_parse_struct() -- => _B
     typedef.typed = struct
   else
-    error("not implemented")
+    error("not implemented yet")
   end
 
-  local typeDefNameToken = self:_next_token()
+  local typeDefNameToken = self:_current_token() -- _B
   if typeDefNameToken.type ~= TOKEN_TYPES.SYMBOL then error(typeDefNameToken.data) end
   typedef.name = typeDefNameToken.data
 
-  local finishToken = self:_next_token()
+  local finishToken = self:_next_token() -- ;
   if finishToken.type ~= TOKEN_TYPES.CHARACTER or finishToken.data ~= ';' then
-    error(string.format("expected end of typedef, not: %s", finishToken.data))
+    self:raise_parse_error(FMT_STRING_PARSE_ERROR_EXPECT, "';'", finishToken.type, finishToken.data)
   end
+
+  self:_next_token() -- ?
 
   return typedef
 end
@@ -317,7 +341,7 @@ function Parser:interpret_tokens(tokens)
   self.state = {
     tokens = tokens,
     stack = {},
-    index = 0, -- uninitialized
+    index = 1, -- uninitialized
     interpretation = interpretation,
   }
   local state = self.state
@@ -325,7 +349,7 @@ function Parser:interpret_tokens(tokens)
   local stack = state.stack
 
   while state.index <= #tokens do
-    local token = self:_next_token() -- first time selects 1
+    local token = self:_current_token() -- first time selects 1
     if token == nil then break end
 
     ---@type BaseType
@@ -347,12 +371,13 @@ function Parser:interpret_tokens(tokens)
       table.insert(interpretation.elements, struct)
 
     elseif token.type == TOKEN_TYPES.SYMBOL then
-      state.index = state.index - 1
       local o = {}
       local typeInfo = self:_parse_type_info()
       o.typeInfo = typeInfo
       local functionPointer = self:_parse_field_function_pointer(o)
       table.insert(interpretation.elements, o)
+    else
+      error(string.format("uncaught situation: %s, %s", self:_current_token().type, self:_current_token().data))
     end
   end
 

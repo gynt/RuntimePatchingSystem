@@ -10,8 +10,8 @@ function test_cffi_parser_struct.test_struct()
   local interpretation = parser:parse([[
     struct A {
       int a;
-      int b[100];
-      unsigned long address;
+      int b[100][300];
+      unsigned long * address;
     };
   ]])
 
@@ -21,7 +21,7 @@ function test_cffi_parser_struct.test_struct()
   lunatest.assert_equal("struct", result[1].type)
   lunatest.assert_equal(3, #result[1].fields)
 
-  lunatest.assert_equal("int", result[1].fields[1].fieldTypeName)
+  lunatest.assert_equal("int", result[1].fields[1].typeInfo.name)
   lunatest.assert_equal("b", result[1].fields[2].name)
 end
 
