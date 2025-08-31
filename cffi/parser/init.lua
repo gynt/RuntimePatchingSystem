@@ -12,13 +12,17 @@ local options = require("cffi.options")
 ---@class Parser
 local Parser = {}
 
-local PARSER_DEFAULTS = {}
+local PARSER_DEFAULTS = {
+  namespace = GLOBAL,
+}
 
 ---@return Parser instance
-function Parser:init(options)
-  local opts = options or PARSER_DEFAULTS
+function Parser:init(opts)
+  opts = opts or PARSER_DEFAULTS
 
-  local o = {}
+  local o = {
+    namespace = opts.namespace or PARSER_DEFAULTS.namespace,
+  }
   setmetatable(o, self)
   self.__index = self
 
