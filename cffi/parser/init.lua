@@ -107,7 +107,7 @@ function Parser:_previous_token()
   return self:_current_token()
 end
 
-function Parser:_parse_field_function_pointer(field)
+function Parser:_parse_function_pointer(field)
   -- void (__thiscall * f)(int a, unsigned char * b);
   local parenthesisToken = self:_current_token() -- (
   if parenthesisToken.type ~= TOKEN_TYPES.PARENTHESIS_OPEN then
@@ -187,7 +187,7 @@ function Parser:_parse_field_function_pointer(field)
   return field
 end
 
-function Parser:_parse_field_data(field)
+function Parser:_parse_data(field)
   -- unsigned int ** a[100][200];
   local nameToken = self:_current_token() -- a
 
@@ -213,16 +213,16 @@ function Parser:_parse_field_data(field)
   return field
 end
 
-function Parser:_parse_field()
+function Parser:_parse_variable()
   local field = {}
   
   field.typeInfo = self:_parse_type_info()
 
   if self:_current_token().type == TOKEN_TYPES.PARENTHESIS_OPEN then
-    return self:_parse_field_function_pointer(field)
+    return self:_parse_function_pointer(field)
   end
 
-  return self:_parse_field_data(field)
+  return self:_parse_data(field)
 end
 
 ---@class _parse_struct_Params
@@ -263,7 +263,7 @@ function Parser:_parse_struct()
   while self:_current_token().type ~= TOKEN_TYPES.CURLY_BRACKET_CLOSE do
     fieldCounter = fieldCounter + 1
 
-    local field = self:_parse_field() -- }
+    local field = self:_parse_variable() -- }
     table.insert(struct.fields, field)
     
   end
@@ -374,7 +374,7 @@ function Parser:interpret_tokens(tokens)
       local o = {}
       local typeInfo = self:_parse_type_info()
       o.typeInfo = typeInfo
-      local functionPointer = self:_parse_field_function_pointer(o)
+      self:_parse_function_pointer(o)
       table.insert(interpretation.elements, o)
     else
       error(string.format("uncaught situation: %s, %s", self:_current_token().type, self:_current_token().data))
