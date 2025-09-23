@@ -177,7 +177,7 @@ int luaExposeCode(lua_State* L) {
 	}
 
 	if (argumentCount > RPS_ARGUMENT_LIMIT) {
-		return luaL_error(L, (std::string("too many arguments specified, max is ") + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
+		return luaL_error(L, "too many arguments specified, max is %d but %d were specified", RPS_ARGUMENT_LIMIT, argumentCount);
 	}
 
 	int adjustedArgCount = argumentCount - (int)(callingConvention == CallingConvention::THISCALL);
@@ -219,13 +219,13 @@ int luaHookCode(lua_State* L) {
 	}
 
 	if (argumentCount > RPS_ARGUMENT_LIMIT) {
-		return luaL_error(L, ("too many arguments specified, max is " + std::to_string(RPS_ARGUMENT_LIMIT) + ": " + std::to_string(argumentCount)).c_str());
+		return luaL_error(L, "too many arguments specified, max is %d but %d were specified" , RPS_ARGUMENT_LIMIT, argumentCount);
 	}
 
 	std::pair<std::map<DWORD, std::shared_ptr<LuaHook>>::const_iterator, bool> hi = hookMapping.insert(std::pair<DWORD, std::shared_ptr<LuaHook>>(address, std::make_shared<LuaHook>(address, hookSize, callingConvention, argumentCount, "", "")));
 
 	if (!hi.second) {
-		return luaL_error(L, "a hook already exists for function at: " + address);
+		return luaL_error(L, "a hook already exists for function at: 0x%X", address);
 	}
 
 	// Store a reference to the hook function that is to be called later.
@@ -316,11 +316,12 @@ int luaCallMachineCode(lua_State* L) {
 	int argumentCount = lua_tointeger(L, lua_upvalueindex(2));
 	int callingConvention = lua_tointeger(L, lua_upvalueindex(3));
 
+	int actualArgCount = lua_gettop(L);
+
 	if (callingConvention == CallingConvention::THISCALL) {
 		int totalArgCount = argumentCount + 1;  // ecx is passed as the first parameter
-		if (lua_gettop(L) != totalArgCount) {
-			//std::cout << "[RPS]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
-			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
+		if (actualArgCount != totalArgCount) {
+			return luaL_error(L, "[RPS]: error when invoking function 0x%X: expected %d arguments, but received %d", functionLocation, totalArgCount, actualArgCount);
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
@@ -331,20 +332,19 @@ int luaCallMachineCode(lua_State* L) {
 		}
 
 		if (lua_type(L, 1) != LUA_TNUMBER) {
-			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " ecx value is not an integer (or pointer);").c_str());
+			return luaL_error(L, "[RPS]: calling function 0x%X ecx value is not an integer (or pointer)", functionLocation);
 		}
 
 		currentECXValue = lua_tointeger(L, 1); // this parameter
 	}
 	else {
 		if (lua_gettop(L) != argumentCount) { // + 0
-			//std::cout << "[RPS]: calling function " << std::hex << functionLocation << " with too few arguments;" << std::endl;
-			return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " with too few arguments;").c_str());
+			return luaL_error(L, "[RPS]: error when invoking function 0x%X: expected %d arguments, but received %d", functionLocation, argumentCount, actualArgCount);
 		}
 
 		for (int i = 0; i < argumentCount; i++) {
 			if (lua_type(L, i + 1) != LUA_TNUMBER) {
-				return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " argument #" + std::to_string(i+1) + " is not an integer (or pointer);").c_str());
+				return luaL_error(L, "[RPS]: calling function 0x%X argument #%d is not an integer (or pointer)", functionLocation, i + 1);
 			}
 			fakeStack[i] = lua_tointeger(L, i + 1); // i + 1 to offset the 0-base
 		}
@@ -713,7 +713,7 @@ int luaDetourCode(lua_State* L) {
 
 	std::pair<std::map<DWORD, std::shared_ptr<LuaDetour>>::const_iterator, bool> hi = detourTargetMap.insert(std::pair<DWORD, std::shared_ptr<LuaDetour>>(address, std::make_shared<LuaDetour>(address, ret)));
 	if (!hi.second) {
-		return luaL_error(L, ("detour already exists at this address: " + std::to_string(address)).c_str());
+		return luaL_error(L, "detour already exists at this address: 0x%X", address);
 	}
 	
 	detourTargetMap[address]->luaFunctionRef = luaFunctionRef;

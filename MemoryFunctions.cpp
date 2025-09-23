@@ -118,7 +118,7 @@ int luaWriteString(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(address, size)) {
-		return luaL_error(L, ("cannot write " + std::to_string(1) + " string to location: " + std::to_string(address)).c_str());
+		return luaL_error(L, "cannot write %d string to location: 0x%X", 1, address);
 	}
 #endif
 
@@ -140,7 +140,7 @@ int luaWriteByte(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(address, 1)) {
-		return luaL_error(L, ("cannot write " + std::to_string(1) + " bytes to location: " + std::to_string(address)).c_str());
+		return luaL_error(L, "cannot write 1 bytes to location: 0x%X", address);
 	}
 #endif
 
@@ -161,7 +161,7 @@ int luaWriteSmallInteger(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(address, 2)) {
-		return luaL_error(L, ("cannot write " + std::to_string(2) + " bytes to location: " + std::to_string(address)).c_str());
+		return luaL_error(L, "cannot write 2 bytes to location: 0x%X", address);
 	}
 #endif
 
@@ -182,7 +182,7 @@ int luaWriteInteger(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(address, 4)) {
-		return luaL_error(L, ("cannot write " + std::to_string(4) + " bytes to location: " + std::to_string(address)).c_str());
+		return luaL_error(L, "cannot write 4 bytes to location: 0x%X", address);
 	}
 #endif
 
@@ -206,7 +206,7 @@ int luaWriteBytes(lua_State* L) {
 #ifdef _DEBUG
 	int length = lua_rawlen(L, 2);
 	if (!canWrite(address, length)) {
-		return luaL_error(L, ("cannot write " + std::to_string(length) + " bytes to location: " + std::to_string(address)).c_str());
+		return luaL_error(L, "cannot write %d bytes to location: 0x%X", length, address);
 	}
 #endif
 
@@ -254,7 +254,7 @@ int luaMemCpy(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(dst, size)) {
-		return luaL_error(L, ("cannot write " + std::to_string(size) + " bytes to location: " + std::to_string(dst)).c_str());
+		return luaL_error(L, "cannot write %d bytes to location: 0x%X", size, dst);
 	}
 #endif
 
@@ -288,7 +288,7 @@ int luaMemSet(lua_State* L) {
 
 #ifdef _DEBUG
 	if (!canWrite(dst, size)) {
-		return luaL_error(L, ("cannot write " + std::to_string(size) + " bytes to location: " + std::to_string(dst)).c_str());
+		return luaL_error(L, "cannot write %d bytes to location: 0x%X", size, dst);
 	}
 #endif
 
