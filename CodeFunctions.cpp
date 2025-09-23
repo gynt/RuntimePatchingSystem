@@ -3,6 +3,8 @@
 
 #define RPS_ARGUMENT_LIMIT 20
 
+#define JMP_OR_CALL_REQUIRED_BYTE_COUNT 5
+
 // forward declaration
 void LuaLandingFromCpp();
 
@@ -34,15 +36,15 @@ bool DoCreateCallHook(DWORD from_address, DWORD to_address, int hookSize, DWORD&
 	constexpr INT8 CALL = (INT8)0xE8;
 
 	int size = hookSize;
-	if (size < 5) return FALSE;
+	if (size < JMP_OR_CALL_REQUIRED_BYTE_COUNT) return FALSE;
 
 	BYTE* fun_o_ptr = (BYTE*)from_address;
 	BYTE* fun_h_ptr = (BYTE*)to_address;
 
-	// create gateway
-	BYTE* gateway = (BYTE*)VirtualAlloc(0, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	// create gateway: size + 5 
+	BYTE* gateway = (BYTE*)VirtualAlloc(0, size + JMP_OR_CALL_REQUIRED_BYTE_COUNT, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	memcpy_s(gateway, size, fun_o_ptr, size);
-	uintptr_t gatewayRelAddress = fun_o_ptr - gateway - 5;
+	uintptr_t gatewayRelAddress = fun_o_ptr - gateway - JMP_OR_CALL_REQUIRED_BYTE_COUNT;
 
 	*(gateway + size) = JMP;
 	*(uintptr_t*)((uintptr_t)gateway + size + 1) = gatewayRelAddress;
@@ -54,7 +56,7 @@ bool DoCreateCallHook(DWORD from_address, DWORD to_address, int hookSize, DWORD&
 
 	memset(fun_o_ptr, NOP, size); // needs to be done, otherwise this confuses the CE disassmbler
 
-	uintptr_t relAddress = fun_h_ptr - fun_o_ptr - 5;
+	uintptr_t relAddress = fun_h_ptr - fun_o_ptr - JMP_OR_CALL_REQUIRED_BYTE_COUNT;
 
 	*fun_o_ptr = CALL;
 	*(uintptr_t*)(fun_o_ptr + 1) = relAddress;
@@ -896,7 +898,7 @@ void __declspec(naked) detourLandingFunction() {
 		mov ecx, esp; // store a pointer to the register values on the stack.
 
 		mov eax, [esp + (9 * 0x04)]; // the 9th element will be the return address from the detour.
-		sub eax, 5; // subtract 5 because a jump is 5 long to get the origin address.
+		sub eax, JMP_OR_CALL_REQUIRED_BYTE_COUNT; // subtract 5 because a jump is 5 long to get the origin address.
 		push ecx; // push the register array;
 		push eax; // set this as an argument to the function.
 
