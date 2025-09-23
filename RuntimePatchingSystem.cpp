@@ -72,6 +72,51 @@ const struct luaL_Reg RPS_LIB[] = {
 	{NULL, NULL} /* end of array */
 };
 
+static void setConstantsToTable(lua_State* L) {
+	lua_pushinteger(L, 0);
+	lua_setfield(L, -2, "CDECL");
+
+	lua_pushinteger(L, 1);
+	lua_setfield(L, -2, "THISCALL");
+
+	lua_pushinteger(L, 2);
+	lua_setfield(L, -2, "STDCALL");
+
+	lua_pushinteger(L, 0);
+	lua_setfield(L, -2, "cdecl");
+
+	lua_pushinteger(L, 1);
+	lua_setfield(L, -2, "thiscall");
+
+	lua_pushinteger(L, 2);
+	lua_setfield(L, -2, "stdcall");
+}
+
+static int makeLibWithConstants(lua_State* L) {
+	// stack: 
+	luaL_newlib(L, RPS_LIB);
+
+	// stack: lib table
+	lua_createtable(L, 0, 0);
+	// stack: lib table, constants
+
+	// stack: lib table, constants
+	lua_createtable(L, 0, 0);
+	// stack: lib table, constants, callingConventions
+	
+	setConstantsToTable(L);
+
+	// stack: lib table, constants, callingConventions
+	lua_setfield(L, -2, "callingConventions");
+	// stack: lib table, constants
+
+	// stack: lib table, constants
+	lua_setfield(L, -2, "constants");
+	// stack: lib table
+
+	return 1;
+}
+
 
 RUNTIMEPATCHINGSYSTEM_API void RPS_initializePrintRedirect(lua_State* L) {
 	lua_pushglobaltable(L);
@@ -87,14 +132,15 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_initializeLuaAPI(lua_State* L, std::string ap
 	if (apiNamespace == "_G" || apiNamespace == "global") {
 		lua_pushglobaltable(L);
 		luaL_setfuncs(L, RPS_LIB, 0);
+		setConstantsToTable(L);
 		lua_pop(L, 1);
 	}
 	else if (apiNamespace.empty() || apiNamespace.size() == 0) {
-		luaL_newlib(L, RPS_LIB); // the table is left intentionally on the stack.
+		makeLibWithConstants(L); // the table is left intentionally on the stack.
 	}
 	else {
 		lua_pushglobaltable(L);
-		luaL_newlib(L, RPS_LIB);
+		makeLibWithConstants(L);
 		lua_setfield(L, -1, apiNamespace.c_str());
 		lua_pop(L, 1);
 	}
@@ -236,7 +282,7 @@ RUNTIMEPATCHINGSYSTEM_API void RPS_setLuaState(lua_State* value) {
 
 extern "C" RUNTIMEPATCHINGSYSTEM_API int luaopen_RPS(lua_State * L) {
 	RPS_setLuaState(L);
-	luaL_newlib(L, RPS_LIB);
+	makeLibWithConstants(L);
 
 	return 1;
 }
