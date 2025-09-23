@@ -1,4 +1,5 @@
 #include "CodeFunctions.h"
+#include <algorithm>
 
 #define RPS_ARGUMENT_LIMIT 20
 
@@ -171,7 +172,30 @@ int luaExposeCode(lua_State* L) {
 	
 	int argumentCount = lua_tointeger(L, 2);
 	
-	int callingConvention = lua_tointeger(L, 3);
+	int callingConvention;
+	if (lua_type(L, 3) == LUA_TSTRING) {
+		std::string ccString = lua_tostring(L, 3);
+		std::transform(ccString.begin(), ccString.end(), ccString.begin(), [](unsigned char c) { return std::tolower(c); });
+		if (ccString == "cdecl") {
+			callingConvention = CALLER;
+		}
+		else if (ccString == "thiscall") {
+			callingConvention = THISCALL;
+		}
+		else if (ccString == "stdcall") {
+			callingConvention = STDCALL;
+		}
+		else {
+			return luaL_error(L, "argument 3 must be a valid calling convention");
+		}
+	}
+	else if (lua_type(L, 3) == LUA_TNUMBER) {
+		callingConvention = lua_tointeger(L, 3);
+	}
+	else {
+		return luaL_error(L, "argument 3 must be a valid calling convention");
+	}
+	
 	if (callingConvention < CallingConvention::CALLER || callingConvention > CallingConvention::STDCALL) {
 		return luaL_error(L, "argument 3 must be a valid calling convention");
 	}
@@ -208,9 +232,28 @@ int luaHookCode(lua_State* L) {
 
 	int argumentCount = lua_tointeger(L, 3);
 
-	int callingConvention = lua_tointeger(L, 4);
-	if (callingConvention < 0 || callingConvention > 2) {
-		return luaL_error(L, "invalid calling convention");
+	int callingConvention;
+	if (lua_type(L, 4) == LUA_TSTRING) {
+		std::string ccString = lua_tostring(L, 4);
+		std::transform(ccString.begin(), ccString.end(), ccString.begin(), [](unsigned char c) { return std::tolower(c); });
+		if (ccString == "cdecl") {
+			callingConvention = CALLER;
+		}
+		else if (ccString == "thiscall") {
+			callingConvention = THISCALL;
+		}
+		else if (ccString == "stdcall") {
+			callingConvention = STDCALL;
+		}
+		else {
+			return luaL_error(L, "argument 4 must be a valid calling convention");
+		}
+	}
+	else if (lua_type(L, 4) == LUA_TNUMBER) {
+		callingConvention = lua_tointeger(L, 4);
+	}
+	else {
+		return luaL_error(L, "argument 4 must be a valid calling convention");
 	}
 
 	int hookSize = lua_tointeger(L, 5);
