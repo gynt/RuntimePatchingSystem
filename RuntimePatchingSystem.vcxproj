@@ -57,9 +57,10 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;RUNTIMEPATCHINGLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;EH_GUARDRAILS;_DEBUG;RUNTIMEPATCHINGLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -75,9 +76,10 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;RUNTIMEPATCHINGLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;EH_GUARDRAILS;NDEBUG;RUNTIMEPATCHINGLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -99,17 +101,19 @@
   <ItemGroup>
     <ClInclude Include="AOB.h" />
     <ClInclude Include="CodeFunctions.h" />
+    <ClInclude Include="Exceptions.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LibraryFunctions.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RuntimePatchingSystem.h" />
     <ClInclude Include="MemoryFunctions.h" />
-    <ClInclude Include="UtilityFunctions.h" />
+    <ClInclude Include="UtilityFunctions.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AOB.cpp" />
     <ClCompile Include="CodeFunctions.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="Exceptions.cpp" />
     <ClCompile Include="LibraryFunctions.cpp" />
     <ClCompile Include="RuntimePatchingSystem.cpp" />
     <ClCompile Include="MemoryFunctions.cpp" />

@@ -3,7 +3,6 @@
 #include "framework.h"
 #include "lua.hpp"
 #include <string>
-#include "UtilityFunctions.h"
 #include <set>
 #include <map>
 
