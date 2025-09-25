@@ -9,7 +9,6 @@
 #include <sstream>
 #include <iostream>
 #include "AOB.h"
-#include "UtilityFunctions.h"
 #include "Memory.h"
 
 extern HANDLE codeHeap;
@@ -29,5 +28,3 @@ int luaExposeCode(lua_State* L);
 int luaHookCode(lua_State* L);
 
 int luaCallMachineCode(lua_State* L);
-
-int convertTableToByteStream(lua_State* L, std::stringstream* s);

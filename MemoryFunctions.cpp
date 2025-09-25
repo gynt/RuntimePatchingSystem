@@ -2,6 +2,8 @@
 #include "MemoryFunctions.h"
 
 #include "CodeFunctions.h"
+#include "Exceptions.h"
+#include "UtilityFunctions.hpp"
 
 int luaReadByte(lua_State* L) {
 	if (lua_gettop(L) != 1) {
@@ -11,7 +13,17 @@ int luaReadByte(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-	lua_pushinteger(L, *((BYTE*)address));
+	
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		lua_pushinteger(L, *((BYTE*)address));
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
 	return 1;
 }
 
@@ -24,7 +36,16 @@ int luaReadSmallInteger(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 
-	lua_pushinteger(L, *((SHORT*)address));
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		lua_pushinteger(L, *((SHORT*)address));
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
 	return 1;
 }
 
@@ -37,7 +58,16 @@ int luaReadInteger(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 
-	lua_pushinteger(L, *((int*)address));
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		lua_pushinteger(L, *((int*)address));
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
 	return 1;
 }
 
@@ -66,14 +96,24 @@ int luaReadString(lua_State* L) {
 		return luaL_error(L, "sorry, wide string is not supported yet.");
 	}
 
-	if (length > 0) {
-		lua_pushlstring(L, (const char*)address, length);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		if (length > 0) {
+			lua_pushlstring(L, (const char*)address, length);
+
+		}
+		else {
+			// Finds the first \0 byte and terminates
+			lua_pushlstring(L, (const char *)address, strlen((const char*) address));
+		}
+#ifdef EH_GUARDRAILS
 	}
-	else {
-		// Finds the first \0 byte and terminates
-		std::string result((const char*)address);
-		lua_pushstring(L, result.c_str());
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
 	}
+#endif
+
 
 	return 1;
 }
@@ -92,12 +132,26 @@ int luaReadBytes(lua_State* L) {
 
 	lua_createtable(L, size, 0);
 
-	for (int i = 0; i < size; i++) {
-		unsigned char value = *((BYTE*)(address + i));
-		lua_pushinteger(L, (lua_Integer)i + 1);
-		lua_pushinteger(L, value);
-		lua_settable(L, -3);  /* 3rd element from the stack top */
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		for (int i = 0; i < size; i++) {
+			unsigned char value = *((BYTE*)(address + i));
+
+
+			lua_pushinteger(L, (lua_Integer)i + 1);
+			lua_pushinteger(L, value);
+			lua_settable(L, -3);  /* 3rd element from the stack top */
+		}
+#ifdef EH_GUARDRAILS
 	}
+	__except (RPS_HANDLE_SEH) {
+		// address is technically not entirely correct, but will probably point
+		// in the right direction to fix the underlying cause
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
+
 
 	// we pass the table back;
 
@@ -116,13 +170,18 @@ int luaWriteString(lua_State* L) {
 	size_t size = 0;
 	const char* value = lua_tolstring(L, 2, &size);
 
-#ifdef _DEBUG
-	if (!canWrite(address, size)) {
-		return luaL_error(L, "cannot write %d string to location: 0x%X", 1, address);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		memcpy((void*)address, value, size);
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
 	}
 #endif
 
-	memcpy((void*)address, value, size);
+	
 
 	return 0;
 }
@@ -138,13 +197,17 @@ int luaWriteByte(lua_State* L) {
 
 	BYTE value = lua_tointeger(L, 2);
 
-#ifdef _DEBUG
-	if (!canWrite(address, 1)) {
-		return luaL_error(L, "cannot write 1 bytes to location: 0x%X", address);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		* ((BYTE*)address) = value;
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
 	}
 #endif
 
-	* ((BYTE*)address) = value;
 	return 0;
 }
 
@@ -159,13 +222,18 @@ int luaWriteSmallInteger(lua_State* L) {
 
 	SHORT value = lua_tointeger(L, 2);
 
-#ifdef _DEBUG
-	if (!canWrite(address, 2)) {
-		return luaL_error(L, "cannot write 2 bytes to location: 0x%X", address);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		* ((SHORT*)address) = value;
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
 	}
 #endif
 
-	* ((SHORT*)address) = value;
+	
 	return 0;
 }
 
@@ -180,15 +248,22 @@ int luaWriteInteger(lua_State* L) {
 
 	int value = lua_tointeger(L, 2);
 
-#ifdef _DEBUG
-	if (!canWrite(address, 4)) {
-		return luaL_error(L, "cannot write 4 bytes to location: 0x%X", address);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		* ((int*)address) = value;
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
 	}
 #endif
 
-	* ((int*)address) = value;
+	
 	return 0;
 }
+
+
 
 int luaWriteBytes(lua_State* L) {
 	if (lua_gettop(L) != 2) {
@@ -203,16 +278,10 @@ int luaWriteBytes(lua_State* L) {
 		return luaL_error(L, "the second argument should be a table");
 	}
 
-#ifdef _DEBUG
-	int length = lua_rawlen(L, 2);
-	if (!canWrite(address, length)) {
-		return luaL_error(L, "cannot write %d bytes to location: 0x%X", length, address);
-	}
-#endif
 
 	// Makes use the of the table at -1 (2)
-	std::stringstream bytes;
-	int returnCode = convertTableToByteStream(L, &bytes);
+	ByteStream stream;
+	int returnCode = convertTableToByteStream(L, &stream);
 
 	if (returnCode == -1) {
 		return luaL_error(L, "The return value table must have integer values");
@@ -221,12 +290,19 @@ int luaWriteBytes(lua_State* L) {
 		return luaL_error(L, "The values must all be positive");
 	}
 
-	bytes.seekg(0, bytes.end);
-	int size = bytes.tellg();
-	bytes.seekg(0, bytes.beg);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		// str() is null-terminated, but size is the size without the final null byte, which makes this correct
+		memcpy((void*)address, stream.address, stream.len);
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
 
-	// str() is null-terminated, but size is the size without the final null byte, which makes this correct
-	memcpy((void*)address, bytes.str().data(), size);
+	free(stream.address);
 
 	return 0;
 }
@@ -252,13 +328,17 @@ int luaMemCpy(lua_State* L) {
 		return luaL_error(L, "argument 3 must be a valid size higher than 0");
 	}
 
-#ifdef _DEBUG
-	if (!canWrite(dst, size)) {
-		return luaL_error(L, "cannot write %d bytes to location: 0x%X", size, dst);
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		memcpy((void*)dst, (void*)src, size);
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_X(dst);
 	}
 #endif
-
-	memcpy((void*)dst, (void*)src, size);
+	
 
 	return 0;
 }
@@ -286,13 +366,18 @@ int luaMemSet(lua_State* L) {
 		return luaL_error(L, "argument 3 must be a valid size higher than 0");
 	}
 
-#ifdef _DEBUG
-	if (!canWrite(dst, size)) {
-		return luaL_error(L, "cannot write %d bytes to location: 0x%X", size, dst);
+
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		memset((void*)dst, val, size);
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_X(dst);
 	}
 #endif
-
-	memset((void*)dst, val, size);
+	
 
 	return 0;
 }
@@ -324,12 +409,22 @@ int luaAllocate(lua_State* L) {
 	void* memory;
 
 	int size = lua_tonumber(L, 1);
-	if (lua_gettop(L) == 2 && lua_toboolean(L, 2)) {
-		memory = calloc(size, sizeof(BYTE));
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		if (lua_gettop(L) == 2 && lua_toboolean(L, 2)) {
+			memory = calloc(size, sizeof(BYTE));
+		}
+		else {
+			memory = malloc(size);
+		}
+#ifdef EH_GUARDRAILS
 	}
-	else {
-		memory = malloc(size);
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH;
 	}
+#endif
+
 
 	lua_pushinteger(L, (DWORD_PTR)memory);
 
@@ -341,13 +436,24 @@ int luaDeallocate(lua_State* L) {
 		return luaL_error(L, "Expected one argument");
 	}
 
-	int addr = luaL_checkinteger(L, 1);
-	if (addr == 0) {
+	int address = luaL_checkinteger(L, 1);
+	if (address == 0) {
 		return luaL_error(L, "Address is 0");
 	}
 
-	void* memory = (void* )((DWORD_PTR) addr);
-	free(memory);
+	void* memory = (void* )((DWORD_PTR) address);
+
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		free(memory);
+#ifdef EH_GUARDRAILS
+	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
+	
 
 	return 0;
 }

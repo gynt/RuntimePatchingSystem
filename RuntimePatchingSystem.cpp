@@ -10,7 +10,7 @@
 #include "RuntimePatchingSystem.h"
 #include "CodeFunctions.h"
 #include "MemoryFunctions.h"
-#include "UtilityFunctions.h"
+#include "UtilityFunctions.hpp"
 #include "LibraryFunctions.h"
 
 

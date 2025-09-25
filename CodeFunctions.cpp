@@ -1,5 +1,7 @@
 #include "CodeFunctions.h"
 #include <algorithm>
+#include "Exceptions.h"
+#include "UtilityFunctions.hpp"
 
 #define RPS_ARGUMENT_LIMIT 20
 
@@ -357,7 +359,10 @@ DWORD fakeStack[RPS_ARGUMENT_LIMIT + 1];
 
 // The user has called the luaOriginalFunctionName
 int luaCallMachineCode(lua_State* L) {
+
+
 	DWORD address = lua_tointeger(L, lua_upvalueindex(1));
+
 	int argumentCount = lua_tointeger(L, lua_upvalueindex(2));
 	int callingConvention = lua_tointeger(L, lua_upvalueindex(3));
 
@@ -371,7 +376,7 @@ int luaCallMachineCode(lua_State* L) {
 
 		for (int i = 0; i < argumentCount; i++) {
 			if (lua_type(L, i + 1 + 1) != LUA_TNUMBER) {
-				return luaL_error(L, ("[RPS]: calling function " + std::to_string(functionLocation) + " argument #" + std::to_string(i + 1 + 1) + " is not an integer (or pointer);").c_str());
+				return luaL_error(L, "[RPS]: calling function 0x%X argument #%d is not an integer (or pointer);", functionLocation, i + 1 + 1);
 			}
 			fakeStack[i] = lua_tointeger(L, i + 1 + 1); // i+1+1 (1 to offset 0-base and 1 because this-parameter is ignored
 		}
@@ -397,155 +402,164 @@ int luaCallMachineCode(lua_State* L) {
 
 	}
 
-	__asm {
-		mov ecx, argumentCount;
-	loopbegin:
-		cmp ecx, 0;
-		jle done;
-		dec ecx;
-		mov eax, fakeStack[ecx * 4];
-		push eax;
-		jmp loopbegin;
-	done:
-		mov ecx, callingConvention;
-		cmp ecx, 0;
-		je caller;
-		jmp callee;
-	caller:
-		mov ecx, argumentCount;
-		mov eax, address;
-		cmp ecx, 0;
-		je add0x00;
-		cmp ecx, 1;
-		je add0x04;
-		cmp ecx, 2;
-		je add0x08;
-		cmp ecx, 3;
-		je add0x0C;
-		cmp ecx, 4;
-		je add0x10;
-		cmp ecx, 5;
-		je add0x14;
-		cmp ecx, 6;
-		je add0x18;
-		cmp ecx, 7;
-		je add0x1C;
-		cmp ecx, 8;
-		je add0x20;
-		cmp ecx, 9;
-		je add0x24;
-		cmp ecx, 10;
-		je add0x28;
-		cmp ecx, 11;
-		je add0x2C;
-		cmp ecx, 12;
-		je add0x30;
-		cmp ecx, 13;
-		je add0x34;
-		cmp ecx, 14;
-		je add0x38;
-		cmp ecx, 15;
-		je add0x3C;
-		cmp ecx, 16;
-		je add0x40;
-		cmp ecx, 17;
-		je add0x44;
-		cmp ecx, 18;
-		je add0x48;
-		cmp ecx, 19;
-		je add0x4C;
-		cmp ecx, 20;
-		je add0x50;
-	add0x00:
-		call eax;
-		add esp, 0x00;
-		jmp eor;
-	add0x04:
-		call eax;
-		add esp, 0x04;
-		jmp eor;
-	add0x08:
-		call eax;
-		add esp, 0x08;
-		jmp eor;
-	add0x0C:
-		call eax;
-		add esp, 0x0C;
-		jmp eor;
-	add0x10:
-		call eax;
-		add esp, 0x10;
-		jmp eor;
-	add0x14:
-		call eax;
-		add esp, 0x14;
-		jmp eor;
-	add0x18:
-		call eax;
-		add esp, 0x18;
-		jmp eor;
-	add0x1c:
-		call eax;
-		add esp, 0x1c;
-		jmp eor;
-	add0x20:
-		call eax;
-		add esp, 0x20;
-		jmp eor;
-	add0x24:
-		call eax;
-		add esp, 0x24;
-		jmp eor;
-	add0x28:
-		call eax;
-		add esp, 0x28;
-		jmp eor;
-	add0x2C:
-		call eax;
-		add esp, 0x2C;
-		jmp eor;
-	add0x30:
-		call eax;
-		add esp, 0x30;
-		jmp eor;
-	add0x34:
-		call eax;
-		add esp, 0x34;
-		jmp eor;
-	add0x38:
-		call eax;
-		add esp, 0x38;
-		jmp eor;
-	add0x3C:
-		call eax;
-		add esp, 0x3C;
-		jmp eor;
-	add0x40:
-		call eax;
-		add esp, 0x40;
-		jmp eor;
-	add0x44:
-		call eax;
-		add esp, 0x44;
-		jmp eor;
-	add0x48:
-		call eax;
-		add esp, 0x48;
-		jmp eor;
-	add0x4C:
-		call eax;
-		add esp, 0x4C;
-		jmp eor;
-	add0x50:
-		call eax;
-		add esp, 0x50;
-		jmp eor;
-	callee:
-		mov eax, address;
-		mov ecx, currentECXValue;
-		call eax;
-	eor:
+#ifdef EH_GUARDRAILS
+	__try {
+#endif
+		__asm {
+			mov ecx, argumentCount;
+		loopbegin:
+			cmp ecx, 0;
+			jle done;
+			dec ecx;
+			mov eax, fakeStack[ecx * 4];
+			push eax;
+			jmp loopbegin;
+		done:
+			mov ecx, callingConvention;
+			cmp ecx, 0;
+			je caller;
+			jmp callee;
+		caller:
+			mov ecx, argumentCount;
+			mov eax, address;
+			cmp ecx, 0;
+			je add0x00;
+			cmp ecx, 1;
+			je add0x04;
+			cmp ecx, 2;
+			je add0x08;
+			cmp ecx, 3;
+			je add0x0C;
+			cmp ecx, 4;
+			je add0x10;
+			cmp ecx, 5;
+			je add0x14;
+			cmp ecx, 6;
+			je add0x18;
+			cmp ecx, 7;
+			je add0x1C;
+			cmp ecx, 8;
+			je add0x20;
+			cmp ecx, 9;
+			je add0x24;
+			cmp ecx, 10;
+			je add0x28;
+			cmp ecx, 11;
+			je add0x2C;
+			cmp ecx, 12;
+			je add0x30;
+			cmp ecx, 13;
+			je add0x34;
+			cmp ecx, 14;
+			je add0x38;
+			cmp ecx, 15;
+			je add0x3C;
+			cmp ecx, 16;
+			je add0x40;
+			cmp ecx, 17;
+			je add0x44;
+			cmp ecx, 18;
+			je add0x48;
+			cmp ecx, 19;
+			je add0x4C;
+			cmp ecx, 20;
+			je add0x50;
+		add0x00:
+			call eax;
+			add esp, 0x00;
+			jmp eor;
+		add0x04:
+			call eax;
+			add esp, 0x04;
+			jmp eor;
+		add0x08:
+			call eax;
+			add esp, 0x08;
+			jmp eor;
+		add0x0C:
+			call eax;
+			add esp, 0x0C;
+			jmp eor;
+		add0x10:
+			call eax;
+			add esp, 0x10;
+			jmp eor;
+		add0x14:
+			call eax;
+			add esp, 0x14;
+			jmp eor;
+		add0x18:
+			call eax;
+			add esp, 0x18;
+			jmp eor;
+		add0x1c:
+			call eax;
+			add esp, 0x1c;
+			jmp eor;
+		add0x20:
+			call eax;
+			add esp, 0x20;
+			jmp eor;
+		add0x24:
+			call eax;
+			add esp, 0x24;
+			jmp eor;
+		add0x28:
+			call eax;
+			add esp, 0x28;
+			jmp eor;
+		add0x2C:
+			call eax;
+			add esp, 0x2C;
+			jmp eor;
+		add0x30:
+			call eax;
+			add esp, 0x30;
+			jmp eor;
+		add0x34:
+			call eax;
+			add esp, 0x34;
+			jmp eor;
+		add0x38:
+			call eax;
+			add esp, 0x38;
+			jmp eor;
+		add0x3C:
+			call eax;
+			add esp, 0x3C;
+			jmp eor;
+		add0x40:
+			call eax;
+			add esp, 0x40;
+			jmp eor;
+		add0x44:
+			call eax;
+			add esp, 0x44;
+			jmp eor;
+		add0x48:
+			call eax;
+			add esp, 0x48;
+			jmp eor;
+		add0x4C:
+			call eax;
+			add esp, 0x4C;
+			jmp eor;
+		add0x50:
+			call eax;
+			add esp, 0x50;
+			jmp eor;
+		callee:
+			mov eax, address;
+			mov ecx, currentECXValue;
+			call eax;
+		eor:
+		}
+#ifdef EH_GUARDRAILS
 	}
+	__except (RPS_HANDLE_SEH) {
+		return RPS_LUA_SEH_ADDRESS;
+	}
+#endif
 
 	DWORD result;
 	__asm {
@@ -916,36 +930,6 @@ void __declspec(naked) detourLandingFunction() {
 
 
 
-int convertTableToByteStream(lua_State* L, std::stringstream* s) {
-
-	for (int i = 1; ; i++) {
-		lua_geti(L, -1, i);
-
-		if (lua_isnil(L, -1)) {
-			lua_pop(L, 1);
-			break;
-		}
-
-		if (!lua_isinteger(L, -1)) {
-			lua_pop(L, 1);
-			return -1;
-		}
-
-		unsigned int value = lua_tointeger(L, -1);
-
-		if (value <= 0xff && value >= 0x00) {
-			s->write(reinterpret_cast<const char*>(&value), 1);
-		}
-		else {
-			s->write(reinterpret_cast<const char*>(&value), 4);
-		}
-
-		/* removes 'value' */
-		lua_pop(L, 1);
-	}
-
-	return 0;
-}
 
 int luaWriteCode(lua_State* L) {
 	if (lua_gettop(L) != 2) {
@@ -963,8 +947,8 @@ int luaWriteCode(lua_State* L) {
 // and that converts integers to 4 bytes in big endian order.
 // 
 	// Makes use the of the table at -1 (2)
-	std::stringstream bytes;
-	int returnCode = convertTableToByteStream(L, &bytes);
+	ByteStream stream;
+	int returnCode = convertTableToByteStream(L, &stream);
 
 	if (returnCode == -1) {
 		return luaL_error(L, "The return value table must have integer values");
@@ -973,16 +957,14 @@ int luaWriteCode(lua_State* L) {
 		return luaL_error(L, "The values must all be positive");
 	}
 
-	bytes.seekg(0, bytes.end);
-	int size = bytes.tellg();
-	bytes.seekg(0, bytes.beg);
-
 	DWORD oldProtect;
-	VirtualProtect((LPVOID)address, size, PAGE_EXECUTE_READWRITE, &oldProtect);
+	VirtualProtect((LPVOID)address, stream.len, PAGE_EXECUTE_READWRITE, &oldProtect);
 
-	memcpy((void*)address, bytes.str().data(), size);
+	memcpy((void*)address, stream.address, stream.len);
 
-	VirtualProtect((LPVOID)address, size, oldProtect, &oldProtect);
+	VirtualProtect((LPVOID)address, stream.len, oldProtect, &oldProtect);
+
+	free(stream.address);
 
 	return 0;
 }
