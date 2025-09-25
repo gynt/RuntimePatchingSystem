@@ -1,7 +1,8 @@
 #include "Exceptions.h"
 
 
-const char errorReport[1000] = {};
+char errorReport[1000] = {};
+char intHex[4 + 1] = {};
 static const char* const errorReportTooLong = "error report is too longer, longer than 1000 characters";
 
 int errorFilterAndReporter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
