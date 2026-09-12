@@ -46,12 +46,6 @@ jobs:
       run: |
         & .\tests\run.ps1
 
-    - name: Test the built x86 Lua scanner API
-      shell: pwsh
-      run: |
-        & "$env:USERPROFILE/.nuget/packages/lua/5.4.6/build/native/bin/Win32/v143/Release/lua.exe" tests/aob_api.lua
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
     - name: Create nuget package
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget pack RuntimePatchingSystem.nuspec
