@@ -1,0 +1,11 @@
+package.cpath='./Release/?.dll;'..package.cpath
+local rps=require('RPS')
+local first,second=rps.scanForAOBInMainModule('? ? ?')
+assert(type(first)=='number' and second==first+1,'native Lua overlapping results')
+assert(rps.scanForAOB('? ? ?',first,first+2)==first,'inclusive exact-length range through Lua ABI')
+assert(rps.scanForAOB('? ? ?',first,first+1)==nil,'short range through Lua ABI')
+local missing=string.rep('37 9B E1 46 02 AF DC 85 ',32)
+local a,b=rps.scanForAOBInMainModule(missing)
+assert(a==nil and b==nil,'native missing result shape')
+assert(not pcall(rps.scanForAOBInMainModule,'ZZ'),'invalid pattern rejected')
+print(string.format('RPS DLL Lua ABI passed: overlapping matches 0x%X / 0x%X',first,second))
