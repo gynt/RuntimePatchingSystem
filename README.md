@@ -102,11 +102,18 @@ detourCode(onDetour, 0xABCDEF, 7)
 scanForAOB(searchPattern[, min, max])
     searchPattern    scans the memory for this pattern
     min              address to start searching
-    max              address to stop searching
+    max              inclusive last byte; a match must fit fully inside the range
     
 searchPattern: hexadecimal array with question marks for wildcards.
     example: "FF A1 E? B? ?? 00"
 ```
+`scanForAOBInMainModule(searchPattern)` returns the first two matches (or `nil`
+for either absent result) in committed executable pages of the main process
+image. Use the second result to reject ambiguous instruction signatures. It
+excludes DLLs, heaps and non-executable data, handles overlapping matches and
+protection boundaries, and reports inaccessible executable pages as errors.
+Call during initialization before patching the code being identified.
+
 #### Data functions
 ```
 allocate(size)

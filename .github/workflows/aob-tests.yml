@@ -1,0 +1,17 @@
+name: Native AOB regression tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run x86 boundary and ambiguity tests
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'x86 MSVC toolchain missing' }
+          cmd /c "`"$installation/VC/Auxiliary/Build/vcvars32.bat`" && tests\run-aob.cmd"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

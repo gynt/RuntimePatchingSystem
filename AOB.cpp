@@ -4,6 +4,9 @@
 #include <regex>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <cstdint>
+#include <stdexcept>
 
 #include "AOB.h"
 
@@ -19,7 +22,9 @@ namespace AOB {
 	}
 	DWORD FindPattern(DWORD dwAddress, DWORD dwLen, BYTE* bMask, char* szMask)
 	{
-		for (DWORD i = 0; i < (dwLen - strlen((char*)szMask)); i++)
+		const size_t length = strlen(szMask);
+		if (length == 0 || length > dwLen) return 0;
+		for (DWORD i = 0; i <= dwLen - length; i++)
 		{
 			if (bCompare((BYTE*)(dwAddress + i), bMask, szMask))
 			{
@@ -42,38 +47,34 @@ namespace AOB {
 		return bytes;
 	}
 
+	static bool ReadableImage(const MEMORY_BASIC_INFORMATION& region)
+	{
+		return region.State == MEM_COMMIT && region.Type == MEM_IMAGE &&
+			(region.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
+	}
+
+	// Both bounds are inclusive. Merge adjacent readable regions so a pattern
+	// spanning a protection boundary is considered, without reading guarded pages.
 	DWORD Scan(char* content, char* mask, DWORD min, DWORD max)
 	{
-		SYSTEM_INFO si;
-		GetSystemInfo(&si);
-		_MEMORY_BASIC_INFORMATION32 mbi;
-		DWORD address = min;
-		int remainder = 0;
-		
-		while (VirtualQuery((LPCVOID) address, ((MEMORY_BASIC_INFORMATION*)&mbi), sizeof(MEMORY_BASIC_INFORMATION)) != 0) {
-			if (mbi.State == MEM_COMMIT) {
-				if ((mbi.Type != MEM_MAPPED) && (mbi.Type != MEM_PRIVATE)) {
-					if ((mbi.Protect & PAGE_NOACCESS) == 0) {
-						// address = 0x401002
-						// mbi.BaseAddress = 0x401000
-						DWORD needle = FindPattern(address, mbi.RegionSize, (BYTE*)content, mask);
-						if (needle == 0) {
-							// address = 0x401000
-							address = mbi.BaseAddress;
-						}
-						else {
-							return needle;
-						}
-					}
+		const uint64_t stop = uint64_t(max) + 1;
+		uint64_t address = min, runStart = min;
+		while (address < stop) {
+			MEMORY_BASIC_INFORMATION mbi = {};
+			const bool queried = VirtualQuery(reinterpret_cast<LPCVOID>(uintptr_t(address)), &mbi, sizeof(mbi)) != 0;
+			const uint64_t end = queried ? uint64_t(reinterpret_cast<uintptr_t>(mbi.BaseAddress)) + mbi.RegionSize : address;
+			if (!queried || end <= address || !ReadableImage(mbi)) {
+				if (address > runStart) {
+					const DWORD found = FindPattern(DWORD(runStart), DWORD(address - runStart), reinterpret_cast<BYTE*>(content), mask);
+					if (found) return found;
 				}
+				if (!queried || end <= address) return 0;
+				runStart = (std::min)(end, stop);
 			}
-			
-			// address = 0x59E000
-			address += mbi.RegionSize;
-			if (address > max) {
-				return 0;
-			}
+			address = (std::min)(end, stop);
 		}
+		if (address > runStart)
+			return FindPattern(DWORD(runStart), DWORD(address - runStart), reinterpret_cast<BYTE*>(content), mask);
 		return 0;
 	}
 
@@ -100,7 +101,46 @@ namespace AOB {
 			haystack = sm.suffix();
 		}
 
-		return Scan((char*)(&AOB::HexToBytes(content)[0]), (char*)mask.c_str(), min, max);
+		auto bytes = HexToBytes(content);
+		if (bytes.empty()) return 0;
+		return Scan(bytes.data(), const_cast<char*>(mask.c_str()), min, max);
+	}
+
+	DWORD FindInMainModule(std::string pattern, DWORD& second)
+	{
+		second = 0;
+		const HMODULE module = GetModuleHandleW(nullptr);
+		if (!module) throw std::runtime_error("Cannot locate the main executable");
+		uint64_t address = reinterpret_cast<uintptr_t>(module);
+		std::vector<std::pair<uint64_t, uint64_t>> ranges;
+		while (address <= MAXDWORD) {
+			MEMORY_BASIC_INFORMATION mbi = {};
+			if (!VirtualQuery(reinterpret_cast<LPCVOID>(uintptr_t(address)), &mbi, sizeof(mbi)))
+				throw std::runtime_error("Cannot query the main executable's memory");
+			if (mbi.AllocationBase != module) break;
+			const uint64_t end = uint64_t(reinterpret_cast<uintptr_t>(mbi.BaseAddress)) + mbi.RegionSize;
+			if (end <= address || end > uint64_t(MAXDWORD) + 1)
+				throw std::runtime_error("Invalid main executable memory range");
+			const DWORD executable = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+			if (mbi.Protect & executable) {
+				if (!ReadableImage(mbi)) throw std::runtime_error("Main executable code is not accessible");
+				if (!ranges.empty() && ranges.back().second == address) ranges.back().second = end;
+				else ranges.emplace_back(address, end);
+			}
+			address = end;
+		}
+		DWORD first = 0;
+		for (const auto& range : ranges) {
+			const DWORD found = FindInRange(pattern, DWORD(range.first), DWORD(range.second - 1));
+			if (found) {
+				if (first) { second = found; return first; }
+				first = found;
+				if (uint64_t(found) + 1 < range.second)
+					second = FindInRange(pattern, found + 1, DWORD(range.second - 1));
+				if (second) return first;
+			}
+		}
+		return first;
 	}
 
 	// TODO: find all?

@@ -21,6 +21,7 @@ int luaAllocateRWE(lua_State* L);
 int luaDeallocateRWE(lua_State* L);
 
 int luaScanForAOB(lua_State* L);
+int luaScanForAOBInMainModule(lua_State* L);
 
 int luaDetourCode(lua_State* L);
 
