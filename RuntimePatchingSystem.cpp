@@ -69,6 +69,7 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"registerString", registerString},
 
 	{"scanForAOB", luaScanForAOB},
+	{"scanForAOBInMainModule", luaScanForAOBInMainModule},
 	{NULL, NULL} /* end of array */
 };
 

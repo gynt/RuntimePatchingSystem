@@ -1115,3 +1115,17 @@ int luaScanForAOB(lua_State* L) {
 
 	return 1;
 }
+
+int luaScanForAOBInMainModule(lua_State* L) {
+	const char* pattern = luaL_checkstring(L, 1);
+	if (strlen(pattern) < 2 || !validateAOBQuery(pattern)) return luaL_error(L, "Invalid AOB format");
+	DWORD first = 0, second = 0;
+	// Leave C++ scopes before luaL_error can longjmp.
+	char failure[256] = {};
+	try { first = AOB::FindInMainModule(pattern, second); }
+	catch (const std::exception& error) { strncpy_s(failure, error.what(), _TRUNCATE); }
+	if (failure[0]) return luaL_error(L, "%s", failure);
+	if (first) lua_pushinteger(L, first); else lua_pushnil(L);
+	if (second) lua_pushinteger(L, second); else lua_pushnil(L);
+	return 2;
+}
